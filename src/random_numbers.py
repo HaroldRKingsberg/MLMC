@@ -1,6 +1,6 @@
 import abc
 
-from numpy import identity, linalg, matrix, random
+from numpy import array, identity, linalg, matrix, random
 
 class SampleCreator(object):
 
@@ -10,8 +10,11 @@ class SampleCreator(object):
         self.size = size
 
     @abc.abstractmethod
-    def create_sample(self, *args):
-        ''' Return a numpy array of samples '''
+    def create_sample(self, n_samples=1, *args):
+        '''
+        Return a numpy array of samples. Assume desired sample is of form (s1, s2, ...)
+        Returned object will be of form [(s1_0, s1_1, s1_2, ...), (s2_0, ...), ...]
+        '''
 
 
 class IIDSampleCreator(SampleCreator):
@@ -20,50 +23,50 @@ class IIDSampleCreator(SampleCreator):
         self.distro = distro
         super(IIDSampleCreator, self).__init__(size)
 
-    def create_sample(self, *args):
-        return self.distro(size=self.size)
+    def create_sample(self, n_samples=1, *args):
+        raw = self.distro(size=n_samples*self.size)
+        return array([
+            raw[i:i+n_samples] 
+            for i in 
+            xrange(0, n_samples*self.size, n_samples)
+        ])
 
 
-class CorrelatedSampleCreator(SampleCreator):
+class CorrelatedSampleCreator(IIDSampleCreator):
 
-    def __init__(self, size, corr_matrix):
-        super(CorrelatedSampleCreator, self).__init__(size)
-        self.corr_matrix = corr_matrix
-
+    def __init__(self, corr_matrix):
+        self._set_corr_matrix(corr_matrix)
+        size = len(corr_matrix)
         self._ts_transforms = {}
 
-    @property
-    def corr_matrix(self):
-        return self._corr_matrix
+        super(CorrelatedSampleCreator, self).__init__(size)
 
-    @corr_matrix.setter
-    def corr_matrix(self, value):
-        r, c = value.shape
+    def _set_corr_matrix(self, cm):
+        r, c = cm.shape
 
-        if r != c != self.size:
-            raise ValueError('Correlation matrix %s is not square with sides %d' % (value, self.size))
+        if r != c:
+            raise ValueError('Correlation matrix %s is not square' % cm)
 
         for i in xrange(r):
             for j in xrange(i+1):
-                if value.item(i, j) != value.item(j, i):
-                    raise ValueError('Correlation matrix %s is not symmetric' % value)
+                if cm.item(i, j) != cm.item(j, i):
+                    raise ValueError('Correlation matrix %s is not symmetric' % cm)
 
-        self._corr_matrix = value
+        self._corr_matrix = cm
 
-    def create_sample(self, time_step, *args):
+    def create_sample(self, n_samples=1, time_step=1, *args):
         transform = self._ts_transforms.get(time_step)
 
         if transform is None:
-            print("Whatever")
             transform = self._create_transform(time_step)
             self._ts_transforms[time_step] = transform
 
-        sample = matrix(random.normal(size=self.size)).transpose()
-        return (transform * sample).A1
+        iid = super(CorrelatedSampleCreator, self).create_sample(n_samples)
+        return (transform * matrix(iid)).A
 
     def _create_transform(self, time_step):
         ts = time_step ** 0.5
         I = matrix(ts*identity(self.size))
-        covar = I*self.corr_matrix*I
+        covar = I * self._corr_matrix * I
         return matrix(linalg.cholesky(covar))
 
