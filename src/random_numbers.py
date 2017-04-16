@@ -34,12 +34,12 @@ class IIDSampleCreator(SampleCreator):
 
 class CorrelatedSampleCreator(IIDSampleCreator):
 
-    def __init__(self, corr_matrix):
+    def __init__(self, corr_matrix, distro=random.normal):
         self._set_corr_matrix(corr_matrix)
         size = len(corr_matrix)
         self._ts_transforms = {}
 
-        super(CorrelatedSampleCreator, self).__init__(size)
+        super(CorrelatedSampleCreator, self).__init__(size=size, distro=distro)
 
     def _set_corr_matrix(self, cm):
         r, c = cm.shape
