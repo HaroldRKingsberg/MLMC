@@ -1,7 +1,7 @@
 import numpy
 import unittest
 
-from mlmc.src.random_numbers import IIDSampleCreator
+from mlmc.src.random_numbers import IIDSampleCreator, CorrelatedSampleCreator
 
 class IIDSampleCreatorTestCase(unittest.TestCase):
 
@@ -27,6 +27,41 @@ class IIDSampleCreatorTestCase(unittest.TestCase):
         res = sut.create_sample(n_samples)
 
         numpy.testing.assert_array_equal(res, ev)
+
+
+class CorrelatedSampleCreatorTestCase(unittest.TestCase):
+
+    def test_non_square_matrix_not_accepted(self):
+        bad_corr = numpy.array([[1,2]])
+
+        with self.assertRaises(ValueError):
+            CorrelatedSampleCreator(bad_corr)
+
+    def test_non_symmetric_matrix_not_accepted(self):
+        bad_corr = numpy.array([[1, 1], [0, 1]])
+
+        with self.assertRaises(ValueError):
+            CorrelatedSampleCreator(bad_corr)
+
+    def test_size_attribute(self):
+        sample_size = 4
+        corr = numpy.identity(sample_size)
+        sut = CorrelatedSampleCreator(corr)
+
+        self.assertEqual(sut.size, sample_size)
+
+    def test_normalize_figures(self):
+        sample_size = 5
+        distro = lambda size: numpy.array(range(size))
+        corr = numpy.identity(sample_size)
+
+        sut = CorrelatedSampleCreator(corr, distro)
+
+        for s in xrange(1, 5):
+            step = s ** 2
+            res = sut.create_sample(n_samples=1, time_step=step)
+            ev = numpy.array([[s*i] for i in xrange(sample_size)])
+            numpy.testing.assert_array_equal(res, ev)
 
 
 if __name__ == '__main__':
