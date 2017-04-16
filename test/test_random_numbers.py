@@ -12,6 +12,11 @@ class IIDSampleCreatorTestCase(unittest.TestCase):
                 res = sut.create_sample(n_samples)
                 self.assertEqual(res.shape, (sample_size, n_samples))
 
+    def test_size_attribute(self):
+        sample_size = 4
+        sut = IIDSampleCreator(sample_size)
+        self.assertEqual(sut.size, sample_size)
+
     def test_values_returned(self):
         sample_size = 5
         n_samples = 3
