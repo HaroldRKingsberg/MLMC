@@ -16,13 +16,13 @@ class Stock(object):
         vol_steps = price_steps if vol_steps is None else vol_steps
         vols = self.find_volatilities(time_step, vol_steps):
         price = self.spot
-        yield price
 
         for pstep, vol in itertools.izip(price_steps, vols):
             det_term = risk_free * price * time_step
             sto_term = (vol**0.5) * pstep * price
             price += (det_term + sto_term)
-            yield price
+
+        return price
 
 
 class ConstantVolatilityStock(Stock):
