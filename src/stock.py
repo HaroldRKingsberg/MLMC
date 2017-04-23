@@ -20,7 +20,7 @@ class Stock(object):
 
         for pstep, vol in itertools.izip(price_steps, vols):
             det_term = risk_free * time_step
-            sto_term = vol * pstep
+            sto_term = (vol**0.5) * pstep
             price += (det_term + sto_term) * price
 
         self.post_walk_price = price
@@ -48,7 +48,6 @@ class VariableVolatilityStock(Stock):
 
     def find_volatilities(self, time_step, vol_steps):
         vol = self._base_vol
-        yield vol
 
         for s in vol_steps:
             det_term = self._k * (self._base_vol - vol) * time_step
