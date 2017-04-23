@@ -7,6 +7,7 @@ class Stock(object):
 
     def __init__(self, spot):
         self.spot = spot
+        self.post_walk_price = spot
 
     @abc.abstractmethod
     def find_volatilities(self, time_step, vol_steps):
@@ -14,14 +15,15 @@ class Stock(object):
 
     def walk_price(self, risk_free, time_step, price_steps, vol_steps=None):
         vol_steps = price_steps if vol_steps is None else vol_steps
-        vols = self.find_volatilities(time_step, vol_steps):
-        price = self.spot
+        vols = self.find_volatilities(time_step, vol_steps)
+        price = self.post_walk_price
 
         for pstep, vol in itertools.izip(price_steps, vols):
-            det_term = risk_free * price * time_step
-            sto_term = (vol**0.5) * pstep * price
-            price += (det_term + sto_term)
+            det_term = risk_free * time_step
+            sto_term = (vol**0.5) * pstep
+            price += (det_term + sto_term) * price
 
+        self.post_walk_price = price
         return price
 
 
@@ -29,10 +31,10 @@ class ConstantVolatilityStock(Stock):
 
     def __init__(self, spot, vol):
         super(ConstantVolatilityStock, self).__init__(spot)
-        self._vol = _vol
+        self._vol = vol
 
     def find_volatilities(self, time_step, vol_steps):
-        return (self._vol for _ in vol_steps)
+        return itertools.repeat(self._vol, len(vol_steps))
 
 
 class VariableVolatilityStock(Stock):
@@ -46,7 +48,6 @@ class VariableVolatilityStock(Stock):
 
     def find_volatilities(self, time_step, vol_steps):
         vol = self._base_vol
-        yield vol
 
         for s in vol_steps:
             det_term = self._k * (self._base_vol - vol) * time_step
