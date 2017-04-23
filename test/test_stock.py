@@ -140,7 +140,34 @@ class StockTestCase(unittest.TestCase):
 
 class ConstantVolatilityStockTestCase(unittest.TestCase):
 
-    pass
+    def test_constant_vol_is_a_stock(self):
+        self.assertTrue(issubclass(ConstantVolatilityStock, Stock))
+
+    def test_constant_vol_uses_constants(self):
+        spot = 10
+        vol = 2
+        sut = ConstantVolatilityStock(spot, vol)
+
+        res = sut.find_volatilities(0.01, [0 for _ in xrange(100)])
+
+        self.assertEqual(list(res), [vol for _ in xrange(100)])
+
+
+    def test_constant_vol_works_with_constant_vol(self):
+        spot = 10
+        risk_free = 0.0025
+        time_step = 0.5
+        price_steps = [0.25, 0.5]
+        vol_steps = [20, 30]
+        vol = 2
+        sut = ConstantVolatilityStock(spot, vol)
+
+        sut.walk_price(risk_free,
+                       time_step,
+                       price_steps,
+                       vol_steps)
+        self.assertAlmostEqual(sut.post_walk_price,
+                               30.043765625)
 
 
 class VariableVolatilityStock(unittest.TestCase):
