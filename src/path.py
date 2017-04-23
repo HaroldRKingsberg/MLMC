@@ -3,14 +3,12 @@ import numpy
 
 import mlmc.src.random_numbers as random
 
-def create_euro_option_path(stock,
-                            strike,
-                            risk_free,
-                            t,
-                            n_steps,
-                            is_call,
-                            rng=None,
-                            chunk_size=100000):
+def create_simple_path(stock,
+                       risk_free,
+                       t,
+                       n_steps,
+                       rng=None,
+                       chunk_size=100000):
 
     stock = copy.deepcopy(stock)
     rng = copy.deepcopy(rng) if rng else random.IIDSampleCreator(2)
@@ -28,23 +26,16 @@ def create_euro_option_path(stock,
                          *rng.create_sample(n_samples=c,
                                             time_step=dt))
 
-    if is_call:
-        prop = stock.post_walk_price - strike
-    else:
-        prop = strike - stock.post_walk_price
-
-    return max(0, prop)
+    return stock.post_walk_price
 
 
-def create_euro_option_layer_path(stock,
-                                  strike,
-                                  risk_free,
-                                  t,
-                                  n_steps,
-                                  is_call,
-                                  rng=None,
-                                  chunk_size=100000,
-                                  K=2):
+def create_layer_path(stock,
+                      risk_free,
+                      t,
+                      n_steps,
+                      rng=None,
+                      chunk_size=100000,
+                      K=2):
     s1 = copy.deepcopy(stock)
     s2 = copy.deepcopy(stock)
 
@@ -69,12 +60,7 @@ def create_euro_option_layer_path(stock,
         s2.walk_price(risk_free, dt_sub, *subs)
         s1.walk_price(risk_free, dt, *fulls)
 
-    if is_call:
-        prop = (s2.post_walk_price - strike) - (s1.post_walk_price - strike)
-    else:
-        prop = (strike - s2.post_walk_price) - (strike - s1.post_walk_price)
-
-    return max(0, prop)
+    return (s2.post_walk_price, s1.post_walk_price)
 
 
 def calculate(task):
@@ -85,23 +71,23 @@ if __name__ == '__main__':
     import multiprocessing
     from mlmc.src.stock import ConstantVolatilityStock
     pool = multiprocessing.Pool(4)
-    stock = ConstantVolatilityStock(10, 0.0)
-    '''
+    stock = ConstantVolatilityStock(10, 0.1)
+                            
     x = pool.map(
         calculate,
         [
-            [create_euro_option_path] + [stock, 5, 0.01, 1, 100000, True]
+            [create_simple_path] + [stock, 0.01, 1, 100000]
             for _ in xrange(100)
         ]
     )
     
     import numpy
     print numpy.array(x).mean()
-    '''
+
     x = pool.map(
         calculate,
         [
-            [create_euro_option_layer_path] + [stock, 5, 0.01, 1, 50000, True]
+            [create_layer_path] + [stock, 0.01, 1, 50000]
             for _ in xrange(100)
         ]
     )
