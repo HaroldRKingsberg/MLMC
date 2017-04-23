@@ -10,7 +10,7 @@ class SampleCreator(object):
         self.size = size
 
     @abc.abstractmethod
-    def create_sample(self, n_samples=1, *args):
+    def create_sample(self, n_samples=1, time_step=1, *args):
         '''
         Return a numpy array of samples. Assume desired sample is of form (s1, s2, ...)
         Returned object will be of form [(s1_0, s1_1, s1_2, ...), (s2_0, ...), ...]
