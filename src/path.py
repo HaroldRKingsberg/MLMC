@@ -3,15 +3,15 @@ import numpy
 
 import mlmc.src.random_numbers as random
 
-def create_simple_path(stock,
+def create_simple_path(stocks,
                        risk_free,
                        t,
                        n_steps,
-                       rng=None,
+                       rng_creator=None,
                        chunk_size=100000):
 
-    stock = copy.deepcopy(stock)
-    rng = copy.deepcopy(rng) if rng else random.IIDSampleCreator(2)
+    stocks = [copy.deepcopy(s) for s in stocks]
+    rng = rng_creator() if rng_creator else random.IIDSampleCreator(2*len(stocks))
     dt = float(t) / n_steps
 
     chunks = [chunk_size for _ in xrange(n_steps/chunk_size)]
@@ -21,46 +21,59 @@ def create_simple_path(stock,
         if not c:
             continue
 
-        stock.walk_price(risk_free,
+        samples = rng.create_sample(n_samples=c, time_step=dt)
+        interval = len(samples) / len(stocks)
+
+        for i, s in enumerate(stocks):
+            s.walk_price(risk_free,
                          dt,
-                         *rng.create_sample(n_samples=c,
-                                            time_step=dt))
+                         *samples[i*interval:(i+1)*interval])
 
-    return stock.post_walk_price
+    return [s.post_walk_price for s in stocks]
 
 
-def create_layer_path(stock,
+def create_layer_path(stocks,
                       risk_free,
                       t,
                       n_steps,
-                      rng=None,
+                      rng_creator=None,
                       chunk_size=100000,
                       K=2):
-    s1 = copy.deepcopy(stock)
-    s2 = copy.deepcopy(stock)
+    stocks = [
+        (copy.deepcopy(s), copy.deepcopy(s)) 
+        for s in stocks
+    ]
 
-    rng = copy.deepcopy(rng) if rng else random.IIDSampleCreator(2)
+    rng = rng_creator() if rng_creator else random.IIDSampleCreator(2*len(stocks))
 
     dt = float(t) / n_steps
     dt_sub = dt / K
-    chunks  = [chunk_size for _ in xrange(n_steps/chunk_size)]
+    chunks = [chunk_size for _ in xrange(n_steps/chunk_size)]
     chunks.append(n_steps % chunk_size)
 
     for c in chunks:
         if not c:
             continue
 
-        subs = rng.create_sample(n_samples=c*K,
-                                 time_step=dt_sub)
-        fulls = numpy.array([
-            numpy.array([s[i:i+K].sum() for i in xrange(0, c*K, K)])
-            for s in subs
-        ])
+        samples = rng.create_sample(n_samples=c*K,
+                                    time_step=dt_sub)
+        interval = len(samples) / len(stocks)
 
-        s2.walk_price(risk_free, dt_sub, *subs)
-        s1.walk_price(risk_free, dt, *fulls)
+        for i, (s1, s2) in enumerate(stocks):
+            subs = samples[i*interval:(i+1)*interval]
+            fulls = numpy.array([
+                numpy.array([s[i:i+K].sum() for i in xrange(0, c*K, K)])
+                for s in subs
+            ])
 
-    return (s2.post_walk_price, s1.post_walk_price)
+            s1.walk_price(risk_free, dt, *fulls)
+            s2.walk_price(risk_free, dt_sub, *subs)
+
+
+    return [
+        (s1.post_walk_price, s2.post_walk_price)
+        for s1, s2 in stocks
+    ]
 
 
 def calculate(task):
@@ -72,24 +85,23 @@ if __name__ == '__main__':
     from mlmc.src.stock import ConstantVolatilityStock
     pool = multiprocessing.Pool(4)
     stock = ConstantVolatilityStock(10, 0.1)
-                            
-    x = pool.map(
-        calculate,
-        [
-            [create_simple_path] + [stock, 0.01, 1, 100000]
-            for _ in xrange(100)
-        ]
-    )
-    
-    import numpy
-    print numpy.array(x).mean()
 
     x = pool.map(
         calculate,
         [
-            [create_layer_path] + [stock, 0.01, 1, 50000]
+            [create_simple_path] + [[stock, stock], 0.01, 1, 100000]
             for _ in xrange(100)
         ]
     )
-    print x
     
+    import pprint
+    pprint.pprint(x)
+                            
+    x = pool.map(
+        calculate,
+        [
+            [create_layer_path] + [[stock, stock], 0.01, 1, 50000]
+            for _ in xrange(100)
+        ]
+    )
+    pprint.pprint(x)
