@@ -1,3 +1,4 @@
+import itertools
 import numpy
 import unittest
 
@@ -20,10 +21,11 @@ class IIDSampleCreatorTestCase(unittest.TestCase):
     def test_values_returned(self):
         sample_size = 5
         n_samples = 3
-        distro = lambda size: numpy.array(range(size))
+        c = itertools.count()
+        distro = lambda scale, size: numpy.array([next(c) for _ in xrange(size)])
         ev = numpy.array([range(i, i+n_samples) for i in xrange(0, sample_size*n_samples, n_samples)])
 
-        sut = IIDSampleCreator(sample_size, distro)
+        sut = IIDSampleCreator(sample_size, distro=distro)
         res = sut.create_sample(n_samples)
 
         numpy.testing.assert_array_equal(res, ev)
@@ -52,12 +54,15 @@ class CorrelatedSampleCreatorTestCase(unittest.TestCase):
 
     def test_normalize_figures(self):
         sample_size = 5
-        distro = lambda size: numpy.array(range(size))
+
         corr = numpy.identity(sample_size)
 
-        sut = CorrelatedSampleCreator(corr, distro)
-
         for s in xrange(1, 5):
+            c = itertools.count()
+            distro = lambda scale, size: numpy.array([next(c) for _ in xrange(size)])
+
+            sut = CorrelatedSampleCreator(corr, distro=distro)
+
             step = s ** 2
             res = sut.create_sample(n_samples=1, time_step=step)
             ev = numpy.array([[s*i] for i in xrange(sample_size)])

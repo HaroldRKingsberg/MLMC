@@ -19,27 +19,32 @@ class SampleCreator(object):
 
 class IIDSampleCreator(SampleCreator):
 
-    def __init__(self, size, distro=random.normal):
+    def __init__(self, size, scales=None, distro=random.normal):
+        self.scales = scales or [1 for _ in xrange(size)]
+
+        if len(self.scales) != size:
+            raise ValueError('The number of scales does not match the size')
+
         self.distro = distro
         super(IIDSampleCreator, self).__init__(size)
 
     def create_sample(self, n_samples=1, *args):
-        raw = self.distro(size=n_samples*self.size)
         return array([
-            raw[i:i+n_samples] 
-            for i in 
-            xrange(0, n_samples*self.size, n_samples)
+            self.distro(scale=scale, size=n_samples)
+            for scale in self.scales
         ])
 
 
 class CorrelatedSampleCreator(IIDSampleCreator):
 
-    def __init__(self, corr_matrix, distro=random.normal):
+    def __init__(self, corr_matrix, scales=None, distro=random.normal):
         self._set_corr_matrix(corr_matrix)
         size = len(corr_matrix)
         self._ts_transforms = {}
 
-        super(CorrelatedSampleCreator, self).__init__(size=size, distro=distro)
+        super(CorrelatedSampleCreator, self).__init__(size=size,
+                                                      scales=scales, 
+                                                      distro=distro)
 
     def _set_corr_matrix(self, cm):
         r, c = cm.shape
