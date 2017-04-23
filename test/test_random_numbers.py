@@ -30,6 +30,14 @@ class IIDSampleCreatorTestCase(unittest.TestCase):
 
         numpy.testing.assert_array_equal(res, ev)
 
+    def test_scales_work(self):
+        scales = [1.0, 2.0, 0.5]
+        sut = IIDSampleCreator(3, scales)
+        samples = sut.create_sample(n_samples=100000)
+
+        for scale, sample in itertools.izip(scales, samples):
+            self.assertAlmostEqual(scale, numpy.std(sample), 2)
+
 
 class CorrelatedSampleCreatorTestCase(unittest.TestCase):
 
