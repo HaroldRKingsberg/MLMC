@@ -5,7 +5,7 @@ import numpy as np
 
 class SampleCreator(object):
     '''
-    Abstract base class for a generator of one path each for an ensemble of random variables (eg several Brownian motions W1, W2, etc)
+    Abstract base class for a simulator of one path each for an ensemble of random variables (eg several Brownian motions W1, W2, etc)
     Attributes:
         size (int): the number of random variables
     '''
@@ -29,7 +29,7 @@ class SampleCreator(object):
 
 class IIDSampleCreator(SampleCreator):
     '''
-    Generator of one path each for an ensemble of independent random variables
+    Simulator of one path each for an ensemble of independent random variables
     Attributes:
         size (int): the number of independent random variables (eg the number of independent Brownian motions W1, W2, etc)
         distro (method of numpy.random): the distribution from which to take one step and form one random path
@@ -59,7 +59,7 @@ class IIDSampleCreator(SampleCreator):
 
 class CorrelatedSampleCreator(IIDSampleCreator):
     '''
-    Generator of one path each for an ensemble of correlated random variables (eg correlated Brownian motions). When the variables together take one time step, their steps are correlated by a given correlation matrix
+    Simulator of one path each for an ensemble of correlated random variables (eg correlated Brownian motions). When the variables together take one time step, their steps are correlated by a given correlation matrix
     Attributes:
         size (int): the number of correlated random variables (eg the number of correlated Brownian motions W1, W2, etc)
         distro (method of numpy.random): the distribution from which to take one step and form one random path
