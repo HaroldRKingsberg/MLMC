@@ -17,7 +17,8 @@ class SDE(object):
     def one_step(self, X, dt):
         f_x = self.drift(X)
         g_x = self.diffusion(X)
-        dw = dt**.5*np.random.randn(g_x.shape[1], 1)
+        dw = dt**.5*np.random.randn(g_x.shape[0], 1)
+        print(dw)
         return dt*f_x + np.matmul(g_x, dw)
 
 
@@ -28,17 +29,17 @@ class SDE(object):
         paths = np.zeros((X0.shape[0], N+1))
 
         for step in range(N):
-            paths[:, step] = X_old
+            paths[:, step] = X_old.reshape(3,)
             X_new = X_old + self.one_step(X_old, dt)
             X_old = X_new
 
-        paths[:, N] = X_new
+        paths[:, N] = X_new.reshape(3,)
         return paths
 
-    def plot_paths(self, paths):
+    def plot_paths(self, paths, t_start=0, t_finish=1):
 
         N = paths.shape[1]
-        x_ticks = [i for i in range(N)]
+        x_ticks = np.linspace(t_start,t_finish,N)
         for i in range(paths.shape[0]):
             plt.plot(x_ticks, paths[i,:])
 
@@ -54,8 +55,8 @@ class testProblem(SDE):
 
 def main():
 
-    test = testProblem(10,2)
-    path = test.EM_Solver(100, np.array([[.2]]))
+    test = testProblem(10,1)
+    path = test.EM_Solver(1000, np.array([[.2],[.2],[.2]]))
     test.plot_paths(path)
 
 
