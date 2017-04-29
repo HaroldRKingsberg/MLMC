@@ -1,7 +1,7 @@
 import copy
 import numpy
 
-import mlmc.src.random_numbers as random
+import mlmc.random_numbers as random
 
 def create_simple_path(stocks,
                        risk_free,
@@ -11,7 +11,7 @@ def create_simple_path(stocks,
                        chunk_size=100000):
     '''
     Make each of the inputted stocks walk one path to final time t
-    Each path consists of n_steps. 
+    Each path consists of n_steps.
     To address memory issues, the simulation is run in chunks.
     Args:
         stocks (iterable): list of stocks that will walk
@@ -19,16 +19,16 @@ def create_simple_path(stocks,
         T (float): the final time at end of a walk
         n_steps (long): number of steps along one path
         rng_creator (object): a maker of random number generator
-        chunk_size (long): a walk of n_steps is done in chunks to address 
+        chunk_size (long): a walk of n_steps is done in chunks to address
             memory issues; chunk_size is the size of one chunk
     Returns:
     '''
-                    
+
     stocks = [copy.deepcopy(s) for s in stocks]
 
     # rng is a random number generator
     # if the user provides a maker of rng, then use that
-    # if the maker rng_creator is not given, then default 
+    # if the maker rng_creator is not given, then default
     rng = rng_creator() if rng_creator else random.IIDSampleCreator(2*len(stocks))
 
     dt = float(T) / n_steps
@@ -42,12 +42,12 @@ def create_simple_path(stocks,
     for c in chunks:
         if not c:
             continue
-        
-        # samples (2D array) are like samples of dW or dZ for c mini steps 
+
+        # samples (2D array) are like samples of dW or dZ for c mini steps
         # rng.size is like how many stocks we are simulating
         # num of rows of samples = rng.size, num columns = c
         samples = rng.create_sample(n_samples=c, time_step=dt)
-        # len(samples) := num rows; 
+        # len(samples) := num rows;
         interval = len(samples) / len(stocks)
 
         for i, s in enumerate(stocks):

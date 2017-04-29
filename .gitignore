@@ -1,4 +1,5 @@
 *.pyc
 mlmc/__pycache__/
 build/
-
+dist/
+mlmc.egg-info/

@@ -1,6 +1,8 @@
-from mlmc.src import path, stock
+from mlmc import stock, path
 import multiprocessing
 import pprint
+
+
 
 pool = multiprocessing.Pool(4)
 s = stock.ConstantVolatilityStock(10, 0)
