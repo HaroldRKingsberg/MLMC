@@ -2,7 +2,7 @@ import itertools
 import numpy
 import unittest
 
-from mlmc.src.random_numbers import IIDSampleCreator, CorrelatedSampleCreator
+from mlmc.random_numbers import IIDSampleCreator, CorrelatedSampleCreator
 
 class IIDSampleCreatorTestCase(unittest.TestCase):
 

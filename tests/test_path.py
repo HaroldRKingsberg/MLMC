@@ -44,9 +44,9 @@ class SimplePathTestCase(unittest.TestCase):
         
         # first manually walk the stocks and store results in stock_price
         for i in xrange(n_steps):
-            var += kappa * (theta - var) * dt + gamma * math.max(var,0)**0.5 * dZ
+            var += kappa * (theta - var) * dt + gamma * max(var,0)**0.5 * dZ
             for j in xrange(len(stock_price)):
-                vol = math.max(var,0)**0.5
+                vol = max(var,0)**0.5
                 stock_price[j] = stock_price[j] * math.exp((r - 0.5 * vol**2) * dt + vol * dW)
         
         # now use create_simple_path() to walk

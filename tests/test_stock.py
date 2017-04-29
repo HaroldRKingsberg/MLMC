@@ -2,7 +2,7 @@ import itertools
 import math
 import unittest
 
-from mlmc.src.stock import (Stock,
+from mlmc.stock import (Stock,
                             ConstantVolatilityStock,
                             VariableVolatilityStock)
 

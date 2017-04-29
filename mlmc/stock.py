@@ -129,12 +129,12 @@ class VariableVolatilityStock(Stock):
         # use the increment dZ from vol_steps to simulate V(t)
         for dZ in vol_steps:
             # the deterministic term in dV(t)
-            det_term = self._kappa * (self._theta - math.max(0, variance)) * time_step
+            det_term = self._kappa * (self._theta - max(0, variance)) * time_step
             # the diffusion term in dV(t)
-            sto_term = self._gamma * (math.max(0, variance)**0.5) * dZ
+            sto_term = self._gamma * (max(0, variance)**0.5) * dZ
             # get the next value of V(t)
             variance += (det_term + sto_term)
             # the full truncation method is used, if V(t) < 0 then
             # only use the positive part of V(t) as the vol
             # thus yield the vol which is V(t)**0.5
-            yield math.max(0, variance)**0.5
+            yield max(0, variance)**0.5
