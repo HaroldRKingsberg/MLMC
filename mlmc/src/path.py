@@ -20,7 +20,7 @@ def create_simple_path(stocks,
         risk_free (float): risk free rate driving stock drift
         T (float): the final time at end of a walk
         n_steps (long): number of steps along one path
-        rng_creator (object): a maker of random number generator
+        rng_creator (class): a class of random number generator
         chunk_size (long): a walk of n_steps is done in chunks to address 
             memory issues; chunk_size is the size of one chunk
     Returns:
@@ -50,7 +50,7 @@ def create_simple_path(stocks,
             continue
         
         # samples (2D array) are like samples of dW or dZ for c mini steps 
-        # rng.size is like how many stocks we are simulating
+        # rng.size = 2*num stocks in default: one dW and dZ for each stock
         # num of rows of samples = rng.size, num columns = c
         samples = rng.create_sample(n_samples=c, time_step=dt)
         # len(samples) := num rows = rng.size
@@ -76,9 +76,8 @@ def create_layer_path(stocks,
                       rng_creator=None,
                       chunk_size=100000,
                       K=2):
-    '''
-    Get the post walk price of each of the inputted stocks
-    Each stock walks one path to final time T
+    '''    
+    Each stock walks one path in the finer level, and one path on the coarser level, to final time T
     The post walk price is returned without changing the stock itself
     This path simulation is MultiLevel Monte Carlo for Euler Maruyama
     To address memory issues, the simulation is run in chunks.
@@ -87,9 +86,10 @@ def create_layer_path(stocks,
         risk_free (float): risk free rate driving stock drift
         T (float): the final time at end of a walk
         n_steps (long): number of steps along one path
-        rng_creator (object): a maker of random number generator
+        rng_creator (class): a class of random number generator
         chunk_size (long): a walk of n_steps is done in chunks to address 
             memory issues; chunk_size is the size of one chunk
+        K (int): for level L in MLMC, the interval [0,T] is partitioned into K**L intermediate time steps
     Returns:
         list: the post walk price of each stock
     '''
@@ -99,23 +99,40 @@ def create_layer_path(stocks,
         for s in stocks
     ]
 
+    # rng.size = 2 * num stocks b/c you need a dW and a dZ for each stock
     rng = rng_creator() if rng_creator else random.IIDSampleCreator(2*len(stocks))
 
+    # dt is for the coarser level, dt_sub for finer level
     dt = float(T) / n_steps
     dt_sub = dt / K
+
+    # walking n_steps is done in many chunks
     chunks = [chunk_size for _ in xrange(n_steps/chunk_size)]
     chunks.append(n_steps % chunk_size)
 
+    # c is the size of one chunk to be processed 
     for c in chunks:
         if not c:
             continue
+        
+        # samples (2D array) are like samples of dW or dZ for c mini steps 
+        # rng.size = 2*num stocks in default: one dW and dZ for each stock
+        # num of rows of samples = rng.size, num columns = c
 
+        # first, samples := dW and dZ are the finer level
         samples = rng.create_sample(n_samples=c*K,
                                     time_step=dt_sub)
         interval = len(samples) / len(stocks)
 
+        # stocks := a list of tuples, in each tuple are 2 identical stocks
+        # s1 and s2 are identical
+        # s1 walks the coarse level, s2 walks the fine level
         for i, (s1, s2) in enumerate(stocks):
+            # subs := dW and dZ at the finer level for one stock represented by (s1, s2)
             subs = samples[i*interval:(i+1)*interval]
+            
+            # fulls := dW and dZ at the coarse level
+            # sum up K samples of dW at fine level to get one sample of dW at coarse level
             fulls = numpy.array([
                 numpy.array([s[i:i+K].sum() for i in xrange(0, c*K, K)])
                 for s in subs
