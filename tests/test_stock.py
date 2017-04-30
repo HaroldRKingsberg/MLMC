@@ -178,11 +178,12 @@ class VariableVolatilityStockTestCase(unittest.TestCase):
     def test_find_volatilities(self):
         spot = 10
         base_vol = 4
+        theta = 4
         k = 0.25
         g = 0.125
         vol_steps = [0.05, 0.0625]
         time_step = 0.5
-        sut = VariableVolatilityStock(spot, base_vol, k, g)
+        sut = VariableVolatilityStock(spot, base_vol, k, theta, g)
 
         res = list(sut.find_volatilities(time_step, vol_steps))
 
