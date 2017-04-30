@@ -35,7 +35,7 @@ class IIDSampleCreatorTestCase(unittest.TestCase):
             sut = IIDSampleCreator(1)
             sample = sut.create_sample(n_samples=100000, time_step=s)[0]
 
-            self.assertAlmostEqual(numpy.std(sample), s, 2)
+            self.assertAlmostEqual(numpy.std(sample), s**0.5, 2)
 
 
 class CorrelatedSampleCreatorTestCase(unittest.TestCase):
