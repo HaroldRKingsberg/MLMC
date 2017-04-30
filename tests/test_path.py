@@ -64,10 +64,42 @@ class LayerPathTestCase(unittest.TestCase):
         stock_price = range(1,3)
         stocks = [VariableVolatilityStock(spot, base_vol, kappa, theta, gamma) for spot in stock_price]
         
-        T, n_steps = 10, 202000
+        # n_steps := num steps at coarse level
+        T, n_steps = 10, 999
         dt = float(T) / n_steps
         var = base_vol**2
         dW, dZ = 0.01, 0.01 # because we are testing a rng that returns 0.01
+        K = 2
+
+        # manually walk at the fine level
+        # n_steps * K = num steps at fine level
+        stock_price_fine = list(stock_price)
+        for i in xrange(n_steps * K):
+            var += kappa * (theta - var) * dt + gamma * max(var,0)**0.5 * dZ
+            for j in xrange(len(stock_price_fine)):
+                vol = max(var,0)**0.5
+                stock_price_fine[j] = stock_price_fine[j] * math.exp((r - 0.5 * vol**2) * dt + vol * dW)
+
+        # manually walk at the coarse level
+        # n_steps on one path at coarse level but each step size = K * dW
+        stock_price_coarse = list(stock_price)
+        var = base_vol**2
+        for i in xrange(n_steps):
+            var += kappa * (theta - var) * dt + gamma * max(var,0)**0.5 * (dZ * K)
+            for j in xrange(len(stock_price_coarse)):
+                vol = max(var,0)**0.5
+                stock_price_coarse[j] = stock_price_coarse[j] * math.exp((r - 0.5 * vol**2) * dt + vol * (dW * K))
+
+        manual_walk = zip(stock_price_coarse, stock_price_fine)
+
+        # now using layer path function
+        post_walk_price = create_layer_path(stocks, r, T, n_steps, ConstRng)
+
+        for j in xrange(len(post_walk_price)):
+            tup_manual = manual_walk[j]
+            tup_func = post_walk_price[j]
+            for k in xrange(1):
+                self.assertAlmostEqual(tup_manual[k], tup_func[k]) 
 
 if __name__ == '__main__':
     unittest.main()
