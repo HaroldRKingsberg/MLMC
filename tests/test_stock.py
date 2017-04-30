@@ -42,78 +42,14 @@ class StockTestCase(unittest.TestCase):
         self.assertEqual(sut.spot, spot)
         self.assertNotEqual(sut.spot, sut.post_walk_price)
 
-    def test_walking_price_takes_deterministic_step(self):
+    def test_walking_price_uses_geometric_brownian_motion(self):
         spot = 10
-        risk_free = 0.025
-        time_step = 0.0025
-        price_steps = [0]
-        vol_steps = [0]
-        sut = self.TestStock(spot)
-
-        sut.walk_price(risk_free,
-                       time_step,
-                       price_steps,
-                       vol_steps)
-        self.assertAlmostEqual(sut.post_walk_price,
-                               (1 + risk_free*time_step) * spot)
-
-    def test_walking_price_takes_multiple_deterministic_steps(self):
-        spot = 10
-        risk_free = 0.025
-        time_step = 0.0025
-        price_steps = [0, 0]
-        vol_steps = [0, 0]
-        sut = self.TestStock(spot)
-
-        sut.walk_price(risk_free,
-                       time_step,
-                       price_steps,
-                       vol_steps)
-        self.assertAlmostEqual(sut.post_walk_price,
-                               ((1 + risk_free*time_step)**2) * spot)
-
-
-    def test_walking_price_deterministic_approaches_exponential(self):
-        spot = 10
-        risk_free = 0.1
-        N = int(1e7)
-        t = 1.0
-        price_steps = [0 for _ in range(N)]
-        time_step = t/N
-
-        sut = self.TestStock(spot)
-        expected = spot * math.exp(risk_free*t)
-        sut.walk_price(risk_free,
-                       time_step,
-                       price_steps)
-        self.assertAlmostEqual(sut.post_walk_price,
-                               expected,
-                               5)
-
-    def test_walking_price_allows_random_walk(self):
-        spot = 10
-        risk_free = 0
-        time_step = 1
+        risk_free = 0.75
+        time_step = 0.0625
         price_steps = [0.25, 0.5]
         vol_steps = [0, 0]
         sut = self.TestStock(spot)
-        expected = 12.50 + 6.25
-
-        sut.walk_price(risk_free,
-                       time_step,
-                       price_steps,
-                       vol_steps)
-        self.assertAlmostEqual(sut.post_walk_price,
-                               expected)
-
-    def test_walking_price_combines_components(self):
-        spot = 10
-        risk_free = 0.0025
-        time_step = 1
-        price_steps = [0.25, 0.5]
-        vol_steps = [0, 0]
-        sut = self.TestStock(spot)
-        expected = 18.8188125
+        expected = 21.84200810815618
 
         sut.walk_price(risk_free,
                        time_step,
