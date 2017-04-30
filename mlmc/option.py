@@ -1,6 +1,7 @@
 from mlmc import path, stock
 import multiprocessing
 import pprint
+import numpy as np
 
 class Option(object):
 
@@ -20,18 +21,27 @@ class EuropeanCall(Option):
 
     def euler_asset_walk(self, nsteps, npaths):
 
+        # weirdness with random numbers generated in multiprocessing???
+        # pool = multiprocessing.Pool(1)
+        #
+        #
+        #
+        # x = pool.map(
+        #     path.calculate,
+        #     [
+        #         [path.create_simple_path] + [[self.assets], self.risk_free, self.expirary_time, nsteps]
+        #         for _ in xrange(npaths)
+        #     ]
+        # )
 
+        x = np.zeros((npaths, len(self.assets)))
+        for i in xrange(npaths):
+            x[i,:] = path.create_simple_path(
+                self.assets,
+                self.risk_free,
+                self.expirary_time,
+                nsteps
+                )
 
-        pool = multiprocessing.Pool(1)
-
-        x = pool.map(
-            path.calculate,
-            [
-                [path.create_simple_path] + [[self.assets], self.risk_free, self.expirary_time, nsteps]
-                for _ in xrange(npaths)
-            ]
-        )
-
-        payoffs = [self.payoff_func(price) for price in x]
-
-        print(payoffs)
+        payoffs = np.array([self.payoff_func(price[0]) for price in x])
+        return payoffs
