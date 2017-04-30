@@ -17,17 +17,18 @@ class MockStock(Stock):
     '''
 
     def find_volatilities(self, time_step, vol_steps):
-        return (float(dZ)/time_step for dZ in vol_steps)
+        for dZ in vol_steps:
+            yield float(dZ) / time_step
 
     def walk_price(self, risk_free, time_step, price_steps, vol_steps):
+        price = self.spot
         vols = self.find_volatilities(time_step, vol_steps)
 
-        change = sum(
-            time_step*risk_free + sigma*dW
-            for sigma, dW in zip(vols, price_steps)
-        )
-        self.post_walk_price = self.spot * change
-        return self.post_walk_price
+        for sigma, dW in zip(vols, price_steps):
+            price *= (time_step*risk_free + sigma*dW)
+
+        self.post_walk_price = price
+        return price
 
 
 class MockSampleCreator(SampleCreator):
@@ -92,57 +93,41 @@ class SimplePathTestCase(unittest.TestCase):
 
         rng_creator = functools.partial(MockSampleCreator, samples)
         paths = create_simple_path(stocks, r, T, n_steps, rng_creator)
-        expecteds = [42.55, 420.1]
+        expecteds = [376.063125, 21610.50125]
 
         for observed, expected in zip(paths, expecteds):
             self.assertAlmostEqual(observed, expected)
 
-"""
+
 class LayerPathTestCase(unittest.TestCase):
     '''
     To test create_layer_path()
     '''
     def test_with_const_rng(self):
-        base_vol, kappa, theta, gamma, r = 0.8, 0.5, 1.2, 1, 0.01
-        stock_price = range(1,3)
-        stocks = [VariableVolatilityStock(spot, base_vol, kappa, theta, gamma) for spot in stock_price]
-        
-        # n_steps := num steps at coarse level
-        T, n_steps = 10, 999
-        dt = float(T) / n_steps
-        var = base_vol**2
-        dW, dZ = 0.01, 0.01 # because we are testing a rng that returns 0.01
-        K = 2
+        spots = map(float, xrange(1, 3))
+        r = 0.01
+        T = 5
+        n_steps = 1
+        stocks = [MockStock(s) for s in spots]
 
-        # manually walk at the fine level
-        # n_steps * K = num steps at fine level
-        stock_price_fine = list(stock_price)
-        for i in xrange(n_steps * K):
-            var += kappa * (theta - var) * dt + gamma * max(var,0)**0.5 * dZ
-            for j in xrange(len(stock_price_fine)):
-                vol = max(var,0)**0.5
-                stock_price_fine[j] = stock_price_fine[j] * math.exp((r - 0.5 * vol**2) * dt + vol * dW)
+        samples = np.array([
+            np.array([5, 6, 7]),
+            np.array([1, 2, 3]),
+            np.array([9, 8, 7]),
+            np.array([4, 6, 2]),
+        ])
 
-        # manually walk at the coarse level
-        # n_steps on one path at coarse level but each step size = K * dW
-        stock_price_coarse = list(stock_price)
-        var = base_vol**2
-        for i in xrange(n_steps):
-            var += kappa * (theta - var) * dt + gamma * max(var,0)**0.5 * (dZ * K)
-            for j in xrange(len(stock_price_coarse)):
-                vol = max(var,0)**0.5
-                stock_price_coarse[j] = stock_price_coarse[j] * math.exp((r - 0.5 * vol**2) * dt + vol * (dW * K))
+        rng_creator = functools.partial(MockSampleCreator, samples)
+        paths = create_layer_path(stocks, r, T, n_steps, rng_creator)
+        expecteds = [
+            (41.3, 376.063125), 
+            (425.1, 21610.50125),
+        ]
 
-        manual_walk = zip(stock_price_coarse, stock_price_fine)
+        for (coarse_o, fine_o), (coarse_e, fine_e) in zip(paths, expecteds):
+            self.assertAlmostEqual(coarse_o, coarse_e)
+            self.assertAlmostEqual(fine_o, fine_e)
 
-        # now using layer path function
-        post_walk_price = create_layer_path(stocks, r, T, n_steps, ConstRng)
 
-        for j in xrange(len(post_walk_price)):
-            tup_manual = manual_walk[j]
-            tup_func = post_walk_price[j]
-            for k in xrange(1):
-                self.assertAlmostEqual(tup_manual[k], tup_func[k]) 
-"""
 if __name__ == '__main__':
     unittest.main()
