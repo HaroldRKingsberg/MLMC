@@ -20,48 +20,35 @@ def create_simple_path(stocks,
         risk_free (float): risk free rate driving stock drift
         T (float): the final time at end of a walk
         n_steps (long): number of steps along one path
-        rng_creator (class): a class of random number generator
+        rng_creator (callable): a no-arg function that will return an
+            object implementing the SampleCreator interface. Default
+            is a function that returns an IIDSampleCreator that outputs
+            both dW and dZ.
         chunk_size (long): a walk of n_steps is done in chunks to address 
             memory issues; chunk_size is the size of one chunk
+
     Returns:
         list: the post walk price of each stock
     '''
 
-    # we do not change the stock itself 
     stocks = [copy.deepcopy(s) for s in stocks]
-
-    # rng is a random number generator
-    # if the user provides a maker of rng, then use that; if not default
-    # rng_creator is a class with a no arg __init__
-    # for each stock, rng is making one series for dW and one for dZ
-    # hence rng.size = 2 * num of stocks 
     rng = rng_creator() if rng_creator else random.IIDSampleCreator(2*len(stocks))
 
     dt = float(T) / n_steps
 
-    # walking n_steps is done in many chunks
     chunks = [chunk_size for _ in xrange(n_steps/chunk_size)]
     chunks.append(n_steps % chunk_size)
 
-    # c is like one chunk; c is the size of one block (chunk) to be processed
-    # simulate c steps at one round, out of n_steps
     for c in chunks:
         if not c:
             continue
         
-        # samples (2D array) are like samples of dW or dZ for c mini steps 
-        # rng.size = 2*num stocks in default: one dW and dZ for each stock
-        # num of rows of samples = rng.size, num columns = c
         samples = rng.create_sample(n_samples=c, time_step=dt)
-        # len(samples) := num rows = rng.size
-        # in defautl case interval = 2 
-        interval = len(samples) / len(stocks)
+        interval = rng.size / len(stocks)
 
         for i, s in enumerate(stocks):
-            # each stock s will use 1 row of len c for dW and 1 for dZ;
-            # dZ is driving the stochastic vol over each step
             # samples[i*interval] are the dW
-            # samples[(i+1)*interval] are the dZ
+            # samples[i*interval + 1] are the dZ
             s.walk_price(risk_free,
                          dt,
                          *samples[i*interval:(i+1)*interval])
@@ -86,10 +73,14 @@ def create_layer_path(stocks,
         risk_free (float): risk free rate driving stock drift
         T (float): the final time at end of a walk
         n_steps (long): number of steps along one path
-        rng_creator (class): a class of random number generator
+        rng_creator (callable): a no-arg function that will return an
+            object implementing the SampleCreator interface. Default
+            is a function that returns an IIDSampleCreator that outputs
+            both dW and dZ.
         chunk_size (long): a walk of n_steps is done in chunks to address 
             memory issues; chunk_size is the size of one chunk
         K (int): for level L in MLMC, the interval [0,T] is partitioned into K**L intermediate time steps
+
     Returns:
         list: the post walk price of each stock
     '''
@@ -99,44 +90,31 @@ def create_layer_path(stocks,
         for s in stocks
     ]
 
-    # rng.size = 2 * num stocks b/c you need a dW and a dZ for each stock
     rng = rng_creator() if rng_creator else random.IIDSampleCreator(2*len(stocks))
 
     # dt is for the coarser level, dt_sub for finer level
     dt = float(T) / n_steps
     dt_sub = dt / K
 
-    # walking n_steps is done in many chunks
     chunks = [chunk_size for _ in xrange(n_steps/chunk_size)]
     chunks.append(n_steps % chunk_size)
 
-    # c is the size of one chunk to be processed 
     for c in chunks:
         if not c:
             continue
         
-        # samples (2D array) are like samples of dW or dZ for c mini steps 
-        # rng.size = 2*num stocks in default: one dW and dZ for each stock
-        # num of rows of samples = rng.size, num columns = c
-
         # first, samples := dW and dZ are the finer level
         samples = rng.create_sample(n_samples=c*K,
                                     time_step=dt_sub)
-        interval = len(samples) / len(stocks)
+        interval = rng.size / len(stocks)
 
-        # stocks := a list of tuples, in each tuple are 2 identical stocks
-        # s1 and s2 are identical
         # s1 walks the coarse level, s2 walks the fine level
         for i, (s1, s2) in enumerate(stocks):
-            # subs := dW and dZ at the finer level for one stock represented by (s1, s2)
-            subs = samples[i*interval:(i+1)*interval]
-            
-            # fulls := dW and dZ at the coarse level
-            # sum up K samples of dW at fine level to get one sample of dW at coarse level
+            subs = samples[i*interval:(i+1)*interval] # finer level
             fulls = numpy.array([
                 numpy.array([s[i:i+K].sum() for i in xrange(0, c*K, K)])
                 for s in subs
-            ])
+            ]) # coarser level
 
             s1.walk_price(risk_free, dt, *fulls)
             s2.walk_price(risk_free, dt_sub, *subs)
