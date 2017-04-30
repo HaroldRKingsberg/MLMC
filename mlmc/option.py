@@ -1,20 +1,84 @@
 from __future__ import division
-from mlmc import path, stock
+
+import abc
+import collections
 import multiprocessing
-import pprint
 import numpy as np
+
+
+from mlmc import path, stock
 from scipy.stats import norm
-from tests.analytic import black_scholes
 import math
 
 class Option(object):
 
-    def __init__(self, assets, risk_free, strike, expirary_time):
+    __metaclass__ = abc.ABCMeta
 
+    def __init__(self, assets, risk_free, expiry, solver, is_call):
         self.assets = assets
         self.risk_free = risk_free
+        self.expiry = expiry
+        self.solver = solver
+        self.is_call = is_call
+
+    @abc.abstractmethod
+    def determine_payoff(self, *args, **kwargs):
+        ''' Figure out the valuation of the option '''
+
+
+class EuropeanStockOption(Option):
+
+    def __init__(self, assets, risk_free, expiry, solver, is_call, strike):
+        if isinstance(assets, collections.Iterable):
+            assets = assets[:1]
+            if not isinstance(assets[0], stock.Stock):
+                raise TypeError("Requires an underlying stock")
+        elif isinstance(assets, stock.Stock):
+            assets = [assets]
+        else:
+            raise TypeError("Requires an underlying stock")
+
+        super(EuropeanStockOption, self).__init__(assets, risk_free, solver, expiry, is_call)
         self.strike = strike
-        self.expirary_time = expirary_time
+
+    def determine_payoff(self, final_spot, *args, **kwargs):
+        v1, v2 = (final_spot, self.strike) if self.is_call else (self.strike, final_spot)
+        return max(v1 - v2, 0)
+
+
+class OptionSolver(object):
+
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def solve_option_price(self, option):
+        return None
+
+
+class AnalyticEuropeanStockOptionSolver(OptionSolver):
+
+    def solve_option_price(self, option):
+        underlying = option.assets[0]
+        spot = underlying.spot
+        vol = underlying.vol
+        risk_free = option.risk_free
+        expiry = option.expiry
+
+        t1 = np.log(spot / option.strike)
+        t2 = vol * np.sqrt(expiry)
+
+        d1 = t1 + (risk_free + vol**2/2) * expiry
+        d2 = t1 + (risk_free - vol**2/2) * expiry
+        F = spot * np.exp(expiry * (risk_free))
+
+        if option.is_call:
+            F, d1, d2, K = F, d1, d2, -strike
+        else:
+            F, d1, d2, K = -F, -d1, -d2, strike
+
+        val = F * ss.norm.cdf(d1) * K * ss.norm.cdf(d2)
+        return np.exp(-risk_free * expiry) * val
+        
 
 
 class EuropeanCall(Option):
@@ -70,20 +134,3 @@ class EuropeanCall(Option):
         simulated_payoffs = self.euler_asset_walk(nsteps, npaths)
         return np.mean(simulated_payoffs) * math.exp(-r*T)
 
-    def check_vanilla_mc(self, target_stdev, confidence_level, num_samples=1000):
-        samples_option_values = [self.vanilla_montecarlo(target_stdev, confidence_level) for i in xrange(num_samples)]
-
-        S0 = self.assets.spot
-        K = self.strike
-        r = self.risk_free
-        q = 0
-        sigma = self.assets._vol
-        T = self.expirary_time
-        option_type = 'call'
-        true_value = black_scholes(S0, K, r, q, sigma, T, option_type)
-
-        z_score = norm.ppf(1 - (1 - confidence_level) / 2)
-        target_epsilon = z_score * target_stdev
-        checks = [abs(x - true_value) > target_epsilon for x in samples_option_values]
-        print(checks)
-        return (sum(checks) / len(checks)) <= (1 - confidence_level), sum(checks), len(checks)
