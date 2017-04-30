@@ -33,7 +33,7 @@ class IIDSampleCreatorTestCase(unittest.TestCase):
     def test_scales_work(self):
         for s in [1, 2, 3]:
             sut = IIDSampleCreator(1)
-            sample = sut.create_sample(n_samples=100000, time_step=s)[0]
+            sample = sut.create_sample(n_samples=300000, time_step=s)[0]
 
             self.assertAlmostEqual(numpy.std(sample), s**0.5, 2)
 
