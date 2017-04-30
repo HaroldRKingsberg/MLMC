@@ -61,12 +61,12 @@ class ConstantVolatilityStock(Stock):
     Attributes:
         spot (float): the current spot price 
         post_walk_price (float): the price at T after walking one full path
-        _vol (float): the constant vol in the diffusion term
+        vol (float): the constant vol in the diffusion term
     '''
 
     def __init__(self, spot, vol):
         super(ConstantVolatilityStock, self).__init__(spot)
-        self._vol = vol
+        self.vol = vol
 
     def find_volatilities(self, time_step, vol_steps):
         '''
@@ -78,7 +78,7 @@ class ConstantVolatilityStock(Stock):
         Returns:
             generator: returns the stock's volatility n times, where n is the length of vol_steps
         '''
-        return itertools.repeat(self._vol, len(vol_steps))
+        return itertools.repeat(self.vol, len(vol_steps))
 
 
 class VariableVolatilityStock(Stock):
@@ -96,6 +96,7 @@ class VariableVolatilityStock(Stock):
     def __init__(self, spot, base_vol, kappa, theta, gamma):
         super(VariableVolatilityStock, self).__init__(spot)
 
+        self.vol = base_vol
         self._base_vol = base_vol
         self._kappa = kappa
         self._theta = theta
@@ -111,7 +112,7 @@ class VariableVolatilityStock(Stock):
         Returns:
             generator: a random walk of the volatility using the full truncation method. Thus, if we are left in a situation where the next step would lead us to a negative variance, the step instead goes to zero.
         '''
-        volatility = max(0, self._base_vol)
+        volatility = max(0, self.vol)
         variance = self._base_vol**2
 
         for dZ in vol_steps:
@@ -119,4 +120,5 @@ class VariableVolatilityStock(Stock):
             diffusion = self._gamma * volatility * dZ
             variance = variance + drift + diffusion
             volatility = max(0, variance) ** 0.5 
+            self.vol = volatility
             yield volatility
