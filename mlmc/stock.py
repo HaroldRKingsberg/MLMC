@@ -111,10 +111,12 @@ class VariableVolatilityStock(Stock):
         Returns:
             generator: a random walk of the volatility using the full truncation method. Thus, if we are left in a situation where the next step would lead us to a negative variance, the step instead goes to zero.
         '''
+        volatility = max(0, self._base_vol)
         variance = self._base_vol**2
 
         for dZ in vol_steps:
-            drift = self._kappa * (self._theta - max(0, variance)) * time_step
-            diffusion = self._gamma * (max(0, variance)**0.5) * dZ
-            variance += (drift + diffusion)
-            yield max(0, variance)**0.5
+            drift = self._kappa * (self._theta - variance) * time_step
+            diffusion = self._gamma * volatility * dZ
+            variance = max(0, variance+drift+diffusion)
+            volatility = variance ** 0.5
+            yield volatility
