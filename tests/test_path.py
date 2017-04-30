@@ -45,18 +45,6 @@ class MockSampleCreator(SampleCreator):
         ])
 
 
-class ConstRng(SampleCreator):
-    '''
-    A rng that returns constants of value = 0.01
-    '''
-    def __init__(self):
-        super(ConstRng, self).__init__(4)
-    
-    def create_sample(self, n_samples=1, time_step=1, *args):
-        x = np.array([0.01 for _ in xrange(n_samples)])
-        return np.array([x for _ in xrange(self.size)])
-
-
 class SimplePathTestCase(unittest.TestCase):
 
     def test_all_stocks_walked(self):
