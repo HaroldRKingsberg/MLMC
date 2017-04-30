@@ -117,6 +117,6 @@ class VariableVolatilityStock(Stock):
         for dZ in vol_steps:
             drift = self._kappa * (self._theta - variance) * time_step
             diffusion = self._gamma * volatility * dZ
-            variance = max(0, variance+drift+diffusion)
-            volatility = variance ** 0.5
+            variance = variance + drift + diffusion
+            volatility = max(0, variance) ** 0.5 
             yield volatility
