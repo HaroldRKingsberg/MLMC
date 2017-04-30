@@ -2,6 +2,7 @@ import abc
 
 from numpy import array, identity, linalg, matrix, random
 import numpy as np
+import random as rn
 
 class SampleCreator(object):
     '''
@@ -26,6 +27,28 @@ class SampleCreator(object):
             ndarray: a 2D array (num rows: self.size, num cols: n_samples). Each row is one single path for one random variable
         '''
 
+class SimpleGaussianSampleCreator(SampleCreator):
+
+    '''
+    Creates IID samples distributed in Gaussian fashion. Does not use numpy
+    because numpy seeding does not play well with multiprocessing
+    '''
+
+    def create_sample(self, n_samples=1, time_step=1, *args):
+        '''
+        Generate a single path for each random variable (number of random variables, eg number of Brownian motions, is self.size). One path consists of n_samples steps
+        Args:
+            n_samples (int): the number of steps along a single path 
+            time_step (float): the size of a mini time step. For Brownian motion, time_step is variance of the normal dist
+        Returns: 
+            ndarray: a 2D array (num rows: self.size, num cols: n_samples). Each row is one single path for one random variable
+        '''
+        # each sample has a mean = 0 and variance = time_step
+        sigma = time_step ** 0.5
+        return array([
+            array([rn.gauss(0, sigma) for _ in xrange(n_samples)])
+            for _ in xrange(self.size)
+        ])
 
 class IIDSampleCreator(SampleCreator):
     '''
@@ -47,10 +70,7 @@ class IIDSampleCreator(SampleCreator):
         Returns: 
             ndarray: a 2D array (num rows: self.size, num cols: n_samples). Each row is one single path for one random variable
         '''
-        # use list comprehension to generate a list of normal random numbers
         # each sample has a mean = 0 and variance = time_step
-        # the number of samples is n_samples, for steps along a single path 
-        # the list is then converted into a numpy array
         return array([
             self.distro(scale=time_step**0.5, size=n_samples)
             for _ in xrange(self.size)

@@ -32,7 +32,7 @@ def create_simple_path(stocks,
     '''
 
     stocks = [copy.deepcopy(s) for s in stocks]
-    rng = rng_creator() if rng_creator else random.IIDSampleCreator(2*len(stocks))
+    rng = rng_creator() if rng_creator else random.SimpleGaussianSampleCreator(2*len(stocks))
 
     dt = float(T) / n_steps
 
@@ -90,7 +90,7 @@ def create_layer_path(stocks,
         for s in stocks
     ]
 
-    rng = rng_creator() if rng_creator else random.IIDSampleCreator(2*len(stocks))
+    rng = rng_creator() if rng_creator else random.SimpleGaussianSampleCreator(2*len(stocks))
 
     # dt is for the coarser level, dt_sub for finer level
     dt = float(T) / n_steps
@@ -132,29 +132,20 @@ def calculate(task):
 
 def main():
     import multiprocessing
-    from mlmc.src.stock import ConstantVolatilityStock
+    from mlmc.stock import ConstantVolatilityStock
     pool = multiprocessing.Pool(4)
     stock = ConstantVolatilityStock(10, 0.1)
 
     x = pool.map(
         calculate,
         [
-            [create_simple_path] + [[stock, stock], 0.01, 1, 100000]
+            [create_simple_path] + [[stock], 0.01, 1, 100]
             for _ in xrange(100)
         ]
     )
 
     import pprint
-    pprint.pprint(x)
-
-    x = pool.map(
-        calculate,
-        [
-            [create_layer_path] + [[stock, stock], 0.01, 1, 50000]
-            for _ in xrange(100)
-        ]
-    )
-    pprint.pprint(x)
+    pprint.pprint(sorted(xx[0] for xx in x))
 
 
 if __name__ == '__main__':
