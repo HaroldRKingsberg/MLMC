@@ -2,9 +2,9 @@ import unittest
 import numpy as np
 import math
 
-from mlmc.src.path import create_simple_path, create_layer_path
-from mlmc.src.stock import ConstantVolatilityStock, VariableVolatilityStock
-from mlmc.src.random_numbers import SampleCreator, IIDSampleCreator, CorrelatedSampleCreator
+from mlmc.path import create_simple_path, create_layer_path
+from mlmc.stock import ConstantVolatilityStock, VariableVolatilityStock
+from mlmc.random_numbers import SampleCreator, IIDSampleCreator, CorrelatedSampleCreator
 
 class ConstOneRng(SampleCreator):
     '''

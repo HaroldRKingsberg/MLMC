@@ -1,7 +1,7 @@
 import copy
 import numpy
 
-import mlmc.src.random_numbers as random
+import mlmc.random_numbers as random
 
 def create_simple_path(stocks,
                        risk_free,
