@@ -17,12 +17,6 @@ class StockTestCase(unittest.TestCase):
             self.vol_calls.append(vol_steps)
             return itertools.repeat(1)
 
-        def expected(self, risk_free, price_steps, dt):
-            price = self.spot
-            for step in price_steps:
-                price = price*math.exp((risk_free - .5)*dt+step)
-            return price
-
 
     def test_cannot_instantiated_without_find_volatilites(self):
         with self.assertRaises(TypeError):
@@ -56,7 +50,11 @@ class StockTestCase(unittest.TestCase):
         price_steps = [0.25, 0.5]
         vol_steps = [0, 0]
         sut = self.TestStock(spot)
-        expected = sut.expected(risk_free, price_steps, time_step)
+
+        ### Calculating expected value
+        expected = 10
+        expected += (risk_free*time_step + price_steps[0]) * expected
+        expected += (risk_free*time_step + price_steps[1]) * expected
 
         sut.walk_price(risk_free,
                        time_step,
