@@ -6,6 +6,7 @@ from mlmc.option import (EuropeanStockOption,
                          AnalyticEuropeanStockOptionSolver,
                          NaiveMCOptionSolver)
 from mlmc.stock import ConstantVolatilityStock
+from analytic import black_scholes
 
 class EuropeanStockOptionTestCase(unittest.TestCase):
 
@@ -32,9 +33,14 @@ class AnalyticEuropeanStockOptionSolverTestCase(unittest.TestCase):
         vol = 0.2
 
         stock = ConstantVolatilityStock(spot, vol)
+        # is_call = True
         option = EuropeanStockOption([stock], risk_free, expiry, True, strike)
 
         solver = AnalyticEuropeanStockOptionSolver()
+
+        call_value = black_scholes(spot, strike, risk_free, 0, vol, expiry, 'call')
+        self.assertAlmostEqual(call_value, 6.04008812972)
+
         self.assertAlmostEqual(solver.solve_option_price(option),
                                6.04008812972)
 
@@ -49,6 +55,10 @@ class AnalyticEuropeanStockOptionSolverTestCase(unittest.TestCase):
         option = EuropeanStockOption([stock], risk_free, expiry, False, strike)
 
         solver = AnalyticEuropeanStockOptionSolver()
+
+        put_value = black_scholes(spot, strike, risk_free, 0, vol, expiry, 'put')
+        self.assertAlmostEqual(put_value, 10.6753248248)
+
         self.assertAlmostEqual(solver.solve_option_price(option),
                                10.6753248248)
 
