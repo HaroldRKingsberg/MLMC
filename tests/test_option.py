@@ -55,6 +55,12 @@ class AnalyticEuropeanStockOptionSolverTestCase(unittest.TestCase):
 
 class NaiveMCOptionSolverTestCase(unittest.TestCase):
 
+    def test_confidence_spread(self):
+        solver = NaiveMCOptionSolver(0.1, 0.9)
+        self.assertAlmostEqual(solver.confidence_interval_spread,
+                               .1645,
+                               4)
+
     def test_put_option(self):
         spot = 100
         strike = 110
@@ -69,11 +75,11 @@ class NaiveMCOptionSolverTestCase(unittest.TestCase):
         solver = NaiveMCOptionSolver(0.1)
         spread = solver.confidence_interval_spread
         n_runs = 1000
-        within_bounds = len(filter(
-            None, 
-            (abs(solver.solve_option_price(option)-expected) < spread for _ in xrange(n_runs))
-        ))
-        print float(within_bounds) / n_runs
+        res = [solver.solve_option_price(option) for _ in xrange(n_runs)]
+        import pprint
+        pprint.pprint(sorted(res))
+        import numpy as np
+        print np.std(np.array(res))
     
 
 if __name__ == '__main__':
