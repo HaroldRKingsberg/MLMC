@@ -52,9 +52,7 @@ class StockTestCase(unittest.TestCase):
         sut = self.TestStock(spot)
 
         ### Calculating expected value
-        expected = 10
-        expected += (risk_free*time_step + price_steps[0]) * expected
-        expected += (risk_free*time_step + price_steps[1]) * expected
+        expected = 21.84200810815618
 
         sut.walk_price(risk_free,
                        time_step,

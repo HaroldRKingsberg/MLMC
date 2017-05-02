@@ -44,15 +44,15 @@ class Stock(object):
         vol_steps = price_steps if vol_steps is None else vol_steps
         vols = self.find_volatilities(time_step, vol_steps)
 
-        price = self.post_walk_price
+        lprice = math.log(self.post_walk_price)
 
         for dW, sigma in itertools.izip(price_steps, vols):
-            drift = risk_free * time_step
-            diffusion = sigma * dW
-            price *= (1 + drift + diffusion)
+            t1 = (risk_free - (0.5 * sigma**2)) * time_step
+            t2 = sigma * dW
+            lprice += (t1 + t2)
 
-        self.post_walk_price = price
-        return price
+        self.post_walk_price = math.exp(lprice)
+        return self.post_walk_price
 
 
 class ConstantVolatilityStock(Stock):
