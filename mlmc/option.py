@@ -2,13 +2,11 @@ from __future__ import division
 
 import abc
 import collections
-import multiprocessing
+import math
 import numpy as np
-
+import scipy.stats as ss
 
 from mlmc import path, stock
-from scipy.stats import norm
-import math
 
 class Option(object):
 
@@ -62,74 +60,64 @@ class AnalyticEuropeanStockOptionSolver(OptionSolver):
         vol = underlying.vol
         risk_free = option.risk_free
         expiry = option.expiry
+        strike = option.strike
 
-        t1 = np.log(spot / option.strike)
-        t2 = vol * np.sqrt(expiry)
+        log_diff = math.log(spot / strike)
+        vt = 0.5 * vol**2
+        denom = vol * math.sqrt(expiry)
 
-        d1 = t1 + (risk_free + vol**2/2) * expiry
-        d2 = t1 + (risk_free - vol**2/2) * expiry
-        F = spot * np.exp(expiry * (risk_free))
+        d1 = (log_diff + (risk_free + vt)*expiry) / denom
+        d2 = (log_diff + (risk_free - vt)*expiry) / denom
+        F = spot * math.exp(expiry * risk_free)
+
+        discount = math.exp(-risk_free * expiry)
 
         if option.is_call:
-            F, d1, d2, K = F, d1, d2, -strike
+            F, d1, strike, d2 = F, d1, -strike, d2
         else:
-            F, d1, d2, K = -F, -d1, -d2, strike
+            F, d1, strike, d2 = -F, -d1, strike, -d2
 
-        val = F * ss.norm.cdf(d1) * K * ss.norm.cdf(d2)
-        return np.exp(-risk_free * expiry) * val
-        
+        return discount * (F * ss.norm.cdf(d1) + strike * ss.norm.cdf(d2))
 
 
-class EuropeanCall(Option):
+class NaiveMCOptionSolver(OptionSolver):
 
-    def __init__(self, asset, risk_free, strike, expirary_time):
-        super(EuropeanCall, self).__init__(asset, risk_free, strike, expirary_time)
-        self.payoff_func = lambda x: max(x - strike, 0)
+    def __init__(self, desired_stdev, confidence_level=0.95, rng_creator=None):
+        self.desired_stdev = desired_stdev
+        self.confidence_level = confidence_level
+        self.rng_creator = rng_creator
 
-    def euler_asset_walk(self, nsteps, npaths):
+    @property
+    def confidence_interval_spread(self):
+        z = ss.norm.ppf(1 - 0.5*(1-self.confidence_level))
+        return z * self.desired_stdev
 
-        # weirdness with random numbers generated in multiprocessing???
-        # pool = multiprocessing.Pool(1)
-        #
-        #
-        #
-        # x = pool.map(
-        #     path.calculate,
-        #     [
-        #         [path.create_simple_path] + [[self.assets], self.risk_free, self.expirary_time, nsteps]
-        #         for _ in xrange(npaths)
-        #     ]
-        # )
+    @property
+    def n_paths(self):
+        return int(self.confidence_interval_spread ** -2)
 
-        x = np.zeros((npaths, 1))
-        for i in xrange(npaths):
-            x[i,:] = path.create_simple_path(
-                [self.assets],
-                self.risk_free,
-                self.expirary_time,
-                nsteps
-                )
+    def find_simulated_mean(self, option, n_steps):
+        arg_list = [
+            option.assets,
+            option.risk_free,
+            option.expiry,
+            n_steps,
+            self.rng_creator
+        ]
 
-        payoffs = np.array([self.payoff_func(price[0]) for price in x])
-        return payoffs
+        total_payoff = sum(
+            option.determine_payoff(*path.create_simple_path(*arg_list))
+            for _ in xrange(self.n_paths)
+        )
 
-    def vanilla_montecarlo(self, target_stdev, confidence_level):
-        '''
-        Args:
-            target_stdev(float): target stdev of the estimator of the option price
-                then epsilon will be like 1.98 * target_stdev
-            confidence_level(float): between [0.5, 1] e.g. 0.9 for 90% confidence
-        '''
-        T = self.expirary_time
-        r = self.risk_free
+        return total_payoff / self.n_paths
 
-        z_score = norm.ppf(1 - (1 - confidence_level) / 2)
-        target_epsilon = z_score * target_stdev
+    def solve_option_price(self, option):
+        expiry = option.expiry
+        risk_free = option.risk_free
+        discount = math.exp(-risk_free * expiry)
 
-        npaths = int(target_epsilon**(-2))
-        step_size = target_epsilon
-        nsteps = int(math.floor(T / step_size))
+        n_steps = int(math.floor(expiry / self.confidence_interval_spread))
 
-        simulated_payoffs = self.euler_asset_walk(nsteps, npaths)
-        return np.mean(simulated_payoffs) * math.exp(-r*T)
-
+        simulated_mean = self.find_simulated_mean(option, n_steps)
+        return simulated_mean * math.exp(-risk_free * expiry)
