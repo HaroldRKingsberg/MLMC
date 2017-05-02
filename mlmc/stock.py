@@ -46,10 +46,10 @@ class Stock(object):
 
         price = self.post_walk_price
 
-        # pstep is the Brownian increment inside dS
-        # vol is the sigma in the diffusion term of dS over one time step
-        for pstep, vol in itertools.izip(price_steps, vols):
-            price *= math.exp((risk_free - 0.5 * vol**2) * time_step + vol * pstep)
+        for dW, sigma in itertools.izip(price_steps, vols):
+            drift = risk_free * time_step
+            diffusion = sigma * dW
+            price *= (1 + drift + diffusion)
 
         self.post_walk_price = price
         return price
