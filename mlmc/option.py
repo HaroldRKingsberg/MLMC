@@ -14,11 +14,10 @@ class Option(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, assets, risk_free, expiry, solver, is_call):
+    def __init__(self, assets, risk_free, expiry, is_call):
         self.assets = assets
         self.risk_free = risk_free
         self.expiry = expiry
-        self.solver = solver
         self.is_call = is_call
 
     @abc.abstractmethod
@@ -28,7 +27,7 @@ class Option(object):
 
 class EuropeanStockOption(Option):
 
-    def __init__(self, assets, risk_free, expiry, solver, is_call, strike):
+    def __init__(self, assets, risk_free, expiry, is_call, strike):
         if isinstance(assets, collections.Iterable):
             assets = assets[:1]
             if not isinstance(assets[0], stock.Stock):
@@ -38,7 +37,7 @@ class EuropeanStockOption(Option):
         else:
             raise TypeError("Requires an underlying stock")
 
-        super(EuropeanStockOption, self).__init__(assets, risk_free, solver, expiry, is_call)
+        super(EuropeanStockOption, self).__init__(assets, risk_free, expiry, is_call)
         self.strike = strike
 
     def determine_payoff(self, final_spot, *args, **kwargs):
