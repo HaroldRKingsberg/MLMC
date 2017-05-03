@@ -97,6 +97,34 @@ class NaiveMCOptionSolverTestCase(unittest.TestCase):
 
         self.assertGreaterEqual(in_bound_count, 0.95*n_runs)
 
+    # The following test can be commented out because it takes
+    # over a minute to run.
+    def test_call_option(self):
+        spot = 100
+        strike = 110
+        risk_free = 0.05
+        expiry = 1
+        vol = 0.2
+
+        stock = ConstantVolatilityStock(spot, vol)
+        option = EuropeanStockOption([stock], risk_free, expiry, True, strike)
+
+        interval = 0.1
+        expected = 6.04008812972
+        lower_bound = expected - interval
+        upper_bound = expected + interval
+        solver = NaiveMCOptionSolver(interval)
+        n_runs = 20
+        in_bound_count = 0
+
+        for i in xrange(n_runs):
+            price = solver.solve_option_price(option)
+
+            if lower_bound <= price <= upper_bound:
+                in_bound_count += 1
+
+        self.assertGreaterEqual(in_bound_count, 0.95*n_runs)
+
 
 if __name__ == '__main__':
     unittest.main()
