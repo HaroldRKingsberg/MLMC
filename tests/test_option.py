@@ -55,12 +55,12 @@ class AnalyticEuropeanStockOptionSolverTestCase(unittest.TestCase):
 
 class NaiveMCOptionSolverTestCase(unittest.TestCase):
 
-    def test_confidence_spread(self):
-        solver = NaiveMCOptionSolver(0.1, 0.9)
-        self.assertAlmostEqual(solver.confidence_interval_spread,
-                               .1645,
-                               4)
+    def test_z_score(self):
+        sut = NaiveMCOptionSolver(0, confidence_level=0.95)
+        self.assertAlmostEqual(sut.z_score, 1.96, 2)
 
+    # The following test can be commented out because it takes
+    # over a minute to run.
     def test_put_option(self):
         spot = 100
         strike = 110
@@ -71,16 +71,22 @@ class NaiveMCOptionSolverTestCase(unittest.TestCase):
         stock = ConstantVolatilityStock(spot, vol)
         option = EuropeanStockOption([stock], risk_free, expiry, False, strike)
 
+        interval = 0.1
         expected = 10.6753248248
-        solver = NaiveMCOptionSolver(0.1)
-        spread = solver.confidence_interval_spread
-        n_runs = 1000
-        res = [solver.solve_option_price(option) for _ in xrange(n_runs)]
-        import pprint
-        pprint.pprint(sorted(res))
-        import numpy as np
-        print np.std(np.array(res))
-    
+        lower_bound = expected - interval
+        upper_bound = expected + interval
+        solver = NaiveMCOptionSolver(interval)
+        n_runs = 20
+        in_bound_count = 0
+
+        for i in xrange(n_runs):
+            price = solver.solve_option_price(option)
+
+            if lower_bound <= price <= upper_bound:
+                in_bound_count += 1
+
+        self.assertGreaterEqual(in_bound_count, 0.95*n_runs)
+
 
 if __name__ == '__main__':
     unittest.main()
