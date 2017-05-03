@@ -69,16 +69,16 @@ class AnalyticEuropeanStockOptionSolver(OptionSolver):
 
         d1 = (log_diff + (risk_free + vt)*expiry) / denom
         d2 = (log_diff + (risk_free - vt)*expiry) / denom
-        F = spot * math.exp(expiry * risk_free)
+        # F = spot * math.exp(expiry * risk_free)
 
         discount = math.exp(-risk_free * expiry)
-
+        
         if option.is_call:
-            F, d1, strike, d2 = F, d1, -strike, d2
+            S, d1, K, d2 = spot, d1, -strike, d2
         else:
-            F, d1, strike, d2 = -F, -d1, strike, -d2
-
-        return discount * (F * ss.norm.cdf(d1) + strike * ss.norm.cdf(d2))
+            S, d1, K, d2 = -spot, -d1, strike, -d2
+        
+        return S * ss.norm.cdf(d1) + K * ss.norm.cdf(d2) * discount
 
 
 class NaiveMCOptionSolver(OptionSolver):
