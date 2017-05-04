@@ -256,7 +256,15 @@ class LayeredMCMCOptionSolver(OptionSolver):
         ]
 
     def _find_alpha(self, payoff_trackers):
-        np.matrix
+        L = len(payoff_trackers)
+        A = np.array([i for i in xrange(1,L+1)]).reshape(L,1)
+        ones = np.ones((L,1))
+        A = np.hstack((A,ones))
+        ml = [tracker.mean for tracker in payoff_trackers]
+        ml = np.array(ml).reshape(L,1)
+        ml = np.log2(ml)
+        alpha, _ = np.linalg.lstsq(A, ml)[0]
+        return alpha        
 
     def _run_levels(self, option, discount):
         n_levels = self.initial_n_levels
