@@ -2,6 +2,8 @@ from __future__ import division
 
 import abc
 import collections
+import datetime
+import functools
 import itertools
 import math
 import numpy as np
@@ -81,48 +83,55 @@ class AnalyticEuropeanStockOptionSolver(OptionSolver):
         return S * ss.norm.cdf(d1) + K * ss.norm.cdf(d2) * discount
 
 
+class StatTracker(object):
+
+    def __init__(self, discount):
+        self.discount = discount
+        self.count = 0
+        self.total = 0
+        self.sum_of_squares = 0
+        self.initial_val = None
+
+    @property
+    def variance(self):
+        if self.count in (0, 1):
+            return float('inf')
+
+        square_of_sum = self.total**2 / self.count
+        variance = (self.sum_of_squares - square_of_sum) / (self.count - 1)
+        return (self.discount * variance)
+
+    @property
+    def stdev(self):
+        if self.count in (0, 1):
+            return float('inf')
+
+        return self.variance ** 0.5
+
+    @property
+    def mean(self):
+        if self.count == 0:
+            return float('nan')
+
+        return self.discount * (self.total + self.initial_val*self.count) / self.count
+
+    def add_sample(self, s):
+        if self.initial_val is None:
+            self.initial_val = s
+
+        self.count += 1
+        diff = s - self.initial_val
+        self.total += diff
+        self.sum_of_squares += diff**2
+
+    def get_interval_length(self, z_score):
+        if self.count == 0:
+            return float('inf')
+
+        return self.stdev * self.count**(-0.5) * z_score
+
+
 class NaiveMCOptionSolver(OptionSolver):
-
-    class StatTracker(object):
-
-        def __init__(self, discount):
-            self.discount = discount
-            self.count = 0
-            self.total = 0
-            self.sum_of_squares = 0
-            self.initial_val = None
-
-        @property
-        def stdev(self):
-            if self.count in (0, 1):
-                return float('inf')
-
-            square_of_sum = self.total**2 / self.count
-            variance = (self.sum_of_squares - square_of_sum) / (self.count - 1)
-            return (self.discount * variance) ** 0.5
-
-        @property
-        def mean(self):
-            if self.count == 0:
-                return float('nan')
-
-            return self.discount * (self.total + self.initial_val*self.count) / self.count
-
-        def add_sample(self, s):
-            if self.initial_val is None:
-                self.initial_val = s
-
-            self.count += 1
-            diff = s - self.initial_val
-            self.total += diff
-            self.sum_of_squares += diff**2
-
-        def get_interval_length(self, z_score):
-            if self.count == 0:
-                return float('inf')
-
-            return self.stdev * self.count**(-0.5) * z_score
-
 
     def __init__(self, max_interval_length, confidence_level=0.95, rng_creator=None):
         self.max_interval_length = max_interval_length
@@ -143,7 +152,7 @@ class NaiveMCOptionSolver(OptionSolver):
         return self._z_score
 
     def _simulate_paths(self, option, n_steps, discount):
-        stat_tracker = self.StatTracker(discount)
+        stat_tracker = StatTracker(discount)
         cnt = itertools.count()
 
         while next(cnt) < 10 or stat_tracker.get_interval_length(self.z_score) > self.max_interval_length:
@@ -170,3 +179,115 @@ class NaiveMCOptionSolver(OptionSolver):
             return tracker.mean, tracker.stdev, tracker.count, n_steps
         else:
             return tracker.mean
+
+
+class LayeredMCMCOptionSolver(OptionSolver):
+
+    def __init__(self,
+                 target_mse,
+                 rng_creator=None,
+                 initial_n_levels=2, 
+                 level_scaling_factor=2,
+                 initial_n_paths=100):
+        self.target_mse = target_mse
+        self.rng_creator = rng_creator
+        self.initial_n_levels = max(initial_n_levels, 2)
+        self.level_scaling_factor = max(level_scaling_factor, 2)
+        self.initial_n_paths = initial_n_paths
+
+    def cost_determined(fn):
+        @functools.wraps(fn)
+        def wrapper(self, *args, **kwargs):
+            d1 = datetime.datetime.now()
+            res = fn(self, *args, **kwargs)
+            d2 = datetime.datetime.now()
+
+            delta = d2 - d1
+            delta = delta.seconds + delta.microseconds*1e-6
+            return delta, res
+
+        return wrapper
+
+    @cost_determined
+    def _run_bottom_level(self, option, steps):
+        result = path.create_simple_path(option.assets,
+                                         option.risk_free,
+                                         option.expiry,
+                                         1,
+                                         self.rng_creator)
+        return option.determine_payoff(*result)
+
+    @cost_determined
+    def _run_upper_level(self, option, steps):
+        result = path.create_layer_path(option.assets,
+                                        option.risk_free,
+                                        option.expiry,
+                                        steps,
+                                        self.rng_creator,
+                                        K=self.level_scaling_factor)
+        coarse, fine = zip(*result)
+        payoff_coarse = option.determine_payoff(*coarse)
+        payoff_fine = option.determine_payoff(*fine)
+
+        return payoff_fine - payoff_coarse
+
+    def _run_level(self, i, n, payoff_tracker, cost_tracker):
+        steps = self.level_scaling_factor ** i
+
+        if i == 0:
+            fn = self._run_bottom_level
+        else:
+            fn = self._run_upper_level
+
+        for _ in xrange(n):
+            cost, payoff = fn(option, steps)
+            cost_tracker.add_sample(cost)
+            payoff_tracker.add_sample(payoff)
+
+    def _determine_additional_n_values(self, trackers):
+        overall = sum(
+            (p.variance * c.mean)**0.5 
+            for _, p, c in trackers
+        ) / (0.75 * self.target_mse**2)
+
+        return [
+            max(0, int(math.ceil(overall * (p.variance * c.mean)**0.5)) - p.count)
+            for _, p, c in trackers
+        ]
+
+    def _find_alpha(self, payoff_trackers):
+        np.matrix
+
+    def _run_levels(self, option, discount):
+        n_levels = self.initial_n_levels
+        trackers = [
+            (self.initial_n_paths, StatTracker(discount), StatTracker(1))
+            for _ in xrange(n_levels)
+        ]
+        alpha = 0
+
+        while sum(n for n, _, _ in trackers):
+            for i, (n, payoff_tracker, cost_tracker) in enumerate(trackers):
+                self._run_level(i, n, payoff_tracker, cost_tracker)
+
+            addl_n_values = self._determine_additional_n_values(trackers)
+            alpha = self._find_alpha([p for (_, p, _) in trackers[1:]])
+
+            trackers = [
+                (addl_n, p, c)
+                for addl_n, (_, p, c) in
+                itertools.izip(addl_n_values, trackers)
+            ]
+
+            if all(n <= 0.01*p.count for n, p, _ in trackers):
+                remaining_error = trackers[-1][1].mean / (2**alpha - 1)
+
+                if remaining_error > (0.75**0.5)*self.target_mse:
+                    trackers.append((self.initial_n_paths, StatTracker(discount), StatTracker(1)))
+
+        return sum(p.mean for _, p, _ in trackers)
+
+    def solve_option_price(self, option):
+        expiry = option.expiry
+        risk_free = option.risk_free
+        discount = math.exp(-risk_free * expiry)
