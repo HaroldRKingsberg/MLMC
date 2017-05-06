@@ -74,10 +74,16 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 \section{Standard Monte Carlo for Euler-Maruyama path simulations}
 	At the current time $t_0=0$, we are concerned with the payoff of an option with the expiry time $T$. We are thus interested in simulating the evolution of the stocks' prices over possible paths between the time $[0,T]$. The Euler-Maruyama in path discretization starts with dividing this time interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where the notations include: $h = T/K$, $t_0=0$, $t_k=k \times h$. We start with $S_i(t_0)=S(0)$ and in order to simulate the stock price over one step from $S_i(t_k)$ to $S_i(t_{k+1})$ as well as to let its variance evolve in the Heston model, the full truncation method (\cite{andersen07}) indicates that:
 	\begin{align}
-	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \upsilon_i(t_k)] h + \sqrt{\upsilon_i(t_k)} dW_i \} \\
+	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \upsilon_i(t_k)^+] h + \sqrt{\upsilon_i(t_k)^+} dW_i \} \\
+		
+	\upsilon_i(t_{k+1}) - \upsilon_i(t_k) &= \kappa_i (\theta_i - \upsilon_i(t_k)^+) h + \gamma \sqrt{\upsilon_i(t_k)^+} dZ_i(t) \\
+	\upsilon_i(t_k)^+ = max(\upsilon_i(t_k),0)
+	\end{align}
+	where the Brownian increments, $dW_i$ and $dZ_i$, are sampled from correlated normal distributions with mean equal to 0, variance equal to the size of the incremental time step $h$, and correlation equal to the specified coefficient $\rho_i$. 
 	
-	\upsilon_i(t_{k+1}) - \upsilon_i(t_k) &= \kappa_i (\theta_i - \upsilon_i(t_k)^+) h + \sqrt{\upsilon_i(t_k)^+} dZ_i(t) \\
-	dW_i(t) \times dZ_i(t) &= \rho_i dt
+	Under the Black-Scholes model, this path simulations simplifies to:
+	\begin{align}
+	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \sigma_i^2] h + \sigma_i dW_i \}
 	\end{align}
 	
 	[Ito SDE for stock to solve and simulate one stock step]
