@@ -1,42 +1,57 @@
 \documentclass{article}
 \usepackage{amsmath}
+\usepackage{natbib}
+\usepackage{indentfirst}
+\usepackage{graphicx}
 
 \title{Monte Carlo Course Group Project \\ 
 Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
-\date{2017-05-15} 
 \author{Harold Kingsberg, Minh Tran, Peter Will}
+\date{2017-05-15} 
 
 \begin{document}
-
 \maketitle
+\tableofcontents
+\newpage
 
 \section{Introduction} 
-In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model \cite{heston1993closed}. The MLMC method in path simulations was described by \cite{giles2008multilevel}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo method which has computing cost of $O(\epsilon^{-3})$. For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles2008multilevel}. 
-[TBD...summary about results and cost savings]
-Section 2 below describes the specifications of a European stock exchange option, as well as the Heston model for the evolutions of a stock's price and its stochastic volatility. Section 3 outlines the Euler-Maruyama method in discretizing the paths of a stock's price and volatility, followed by section 4 on the standard Monte Carlo method to simulate these paths. Section 5 then describes the MLMC algorithm [TBD...]
+	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo method which has computing cost of $O(\epsilon^{-3})$. For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods.
+	
+	[xxx insert empirical results of the order of convergence]
+	[TBD...summary about our results and cost savings]
+	
+	Section 2 below describes the specifications of a European stock exchange option, as well as the Heston model for the evolutions of a stock's price and its stochastic volatility. Section 3 outlines the Euler-Maruyama method in discretizing the paths of a stock's price and volatility, followed by section 4 on the standard Monte Carlo method to simulate these paths. Section 5 then describes the MLMC algorithm [TBD...]
 
 \section{The Heston model and the European stock exchange option}
-Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can only be exercised at the specified time T of the option expiry. Thus the payoff of the option at time T is: $$C(T)=max[0, S_1(T)-S_2(T)]$$
-Under the standard Black-Scholes assumptions, this exchange option can be priced using the Margrabe's formula [tbd: cite]. The assumptions are that the stocks $S_1$ and $S_2$ have continuous dividend yield $q_1$ and $q_2$, respectively, and that their prices evolve based on the geometric Brownian motions as follows: 
-\begin{align*}
-dS_1(t) &= \mu_1 S_1(t) dt + \sigma_1 S_1(t) dW_1(t) \\
-dS_2(t) &= \mu_2 S_2(t) dt + \sigma_2 S_2(t) dW_2(t)
-\end{align*}
-In these equations, the two standard Brownian motions $W_1(t)$ and $W_2(t)$ are assumed to be correlated by a constant correlation coefficient $\rho$, satisfying $dW_1(t) \times dW_2(t) = \rho \times dt$. Then the Margrabe's formula indicates that the value of the European exchange option at time $t=0$ is:
-\begin{align*}
-C(0) &= e^{-q_1 T} S_1(0) N(d_1) - e^{-q_2 T} S_2(0) N(d_2) \\
-d_1 &= \frac{ln(\frac{S_1(0)}{S_2(0)}) + (q_2 - q_1 + \frac{1}{2} \sigma^2) T}{\sigma \sqrt{T}} \\
-d_2 &= d_1 - \sigma \sqrt{T} \\
-\sigma &= \sqrt{\sigma_1^2 + \sigma_2^2 - 2 \sigma_1 \sigma_2 \rho}
-\end{align*}
+	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option at time T is: $C(T)=max[0, S_1(T)-S_2(T)]$
+	
+	Under the standard Black-Scholes assumptions, this exchange option can be priced using the Margrabe's formula given by \cite{margrabe78}. The assumptions are that the stocks $S_1$ and $S_2$ have continuous dividend yield $q_1$ and $q_2$, respectively, and that their prices evolve based on the stochastic differential equation (SDE) with constant volatility as follows: 
+	\begin{align*}
+	dS_1(t) &= \mu_1 S_1(t) dt + \sigma_1 S_1(t) dW_1(t) \\
+	dS_2(t) &= \mu_2 S_2(t) dt + \sigma_2 S_2(t) dW_2(t)
+	\end{align*}
+	
+	In these equations, the two standard Brownian motions $W_1(t)$ and $W_2(t)$ are assumed to be correlated by a constant correlation coefficient $\rho$, satisfying $dW_1(t) \times dW_2(t) = \rho \times dt$. Then the Margrabe's formula indicates that the value of the European exchange option at time $t_0=0$ is:
+	\begin{align*}
+	C(0) &= e^{-q_1 T} S_1(0) N(d_1) - e^{-q_2 T} S_2(0) N(d_2) \\
+	d_1 &= \frac{ln(\frac{S_1(0)}{S_2(0)}) + (q_2 - q_1 + \frac{1}{2} \sigma^2) T}{\sigma \sqrt{T}} \\
+	d_2 &= d_1 - \sigma \sqrt{T} \\
+	\sigma &= \sqrt{\sigma_1^2 + \sigma_2^2 - 2 \rho \sigma_1 \sigma_2}
+	\end{align*}
+	
+	As we move from the Black-Scholes model to the Heston model, the key difference is that the volatility $\sigma$ associated with the diffusion term in the stock's SDE no longer remains a constant. Instead, in the Heston model, the square of the volatility (i.e. the variance) also follows a stochastic process characterized by an SDE. Hence, the dynamics of stock $S_i(t)$ in the Heston model consist of two equations as follows:
+	\begin{align*}
+	dS_i(t) &= \mu_i S_i(t) dt + \sqrt{\upsilon_i(t)} S_i(t) dW_i(t) \\
+	d\upsilon_i(t) &= \kappa_i (\theta_i - \upsilon_i(t)) dt + \sqrt{\upsilon_i(t)} dW_i(t)
+	\end{align*}
+	
+	[variance is mean reverting]
+	
+	[Heston for 2 correlated stocks]
 
-[Heston for 2 correlated stocks]
-
-\section{Euler-Maruyama path discretization}
-[Euler for simple stock]
-
-\section{Standard Monte Carlo for path simulations}
-[Full truncation for Heston model]
+\section{Standard Monte Carlo for Euler-Maruyama path simulations}
+	[Euler for simple stock]
+	[Full truncation for Heston model]
 
 \section{Multilevel Monte Carlo for path simulations}
 
