@@ -181,19 +181,26 @@ class NaiveMCOptionSolver(OptionSolver):
             return tracker.mean
 
 
-class LayeredMCMCOptionSolver(OptionSolver):
+class LayeredMCOptionSolver(OptionSolver):
 
     def __init__(self,
                  target_mse,
                  rng_creator=None,
-                 initial_n_levels=2, 
-                 level_scaling_factor=2,
-                 initial_n_paths=100):
+                 initial_n_levels=3, 
+                 level_scaling_factor=4,
+                 initial_n_paths=5000,
+                 alpha=None,
+                 beta=None,
+                 gamma=None):
         self.target_mse = target_mse
         self.rng_creator = rng_creator
-        self.initial_n_levels = max(initial_n_levels, 2)
+        self.initial_n_levels = max(initial_n_levels, 3)
         self.level_scaling_factor = max(level_scaling_factor, 2)
         self.initial_n_paths = initial_n_paths
+
+        self._alpha = alpha
+        self._beta = beta
+        self._gamma = gamma
 
     def cost_determined(fn):
         @functools.wraps(fn)
@@ -231,7 +238,7 @@ class LayeredMCMCOptionSolver(OptionSolver):
 
         return payoff_fine - payoff_coarse
 
-    def _run_level(self, i, n, payoff_tracker, cost_tracker):
+    def _run_level(self, option, i, n, payoff_tracker, cost_tracker):
         steps = self.level_scaling_factor ** i
 
         if i == 0:
@@ -245,26 +252,38 @@ class LayeredMCMCOptionSolver(OptionSolver):
             payoff_tracker.add_sample(payoff)
 
     def _determine_additional_n_values(self, trackers):
-        overall = sum(
+        overall = int(math.ceil(sum(
             (p.variance * c.mean)**0.5 
             for _, p, c in trackers
-        ) / (0.75 * self.target_mse**2)
+        ) / (self.target_mse**2)))
 
         return [
             max(0, int(math.ceil(overall * (p.variance * c.mean)**0.5)) - p.count)
             for _, p, c in trackers
         ]
 
-    def _find_alpha(self, payoff_trackers):
-        L = len(payoff_trackers)
-        A = np.array([i for i in xrange(1,L+1)]).reshape(L,1)
-        ones = np.ones((L,1))
-        A = np.hstack((A,ones))
-        ml = [tracker.mean for tracker in payoff_trackers]
-        ml = np.array(ml).reshape(L,1)
-        ml = np.log2(ml)
-        alpha, _ = np.linalg.lstsq(A, ml)[0]
-        return alpha        
+    def _find_coefficients(self, payoff_trackers, cost_trackers):
+        A = np.array([[i, 1] for i, _ in enumerate(payoff_trackers, 1)])
+
+        if self._alpha:
+            alpha = self._alpha
+        else:
+            x = np.array([[np.log2(p.mean)] for p in payoff_trackers])
+            alpha = max(0.5, -np.linalg.lstsq(A, x)[0][0])
+
+        if self._beta:
+            beta = self._beta
+        else:
+            x = np.array([[np.log2(p.variance)] for p in payoff_trackers])
+            beta = max(0.5, -np.linalg.lstsq(A, x)[0][0])
+
+        if self._gamma:
+            gamma = self._gamma
+        else:
+            x = np.array([[np.log2(p.mean)] for p in cost_trackers])
+            gamma = np.linalg.lstsq(A, x)[0][0]
+
+        return alpha, beta, gamma
 
     def _run_levels(self, option, discount):
         n_levels = self.initial_n_levels
@@ -272,14 +291,13 @@ class LayeredMCMCOptionSolver(OptionSolver):
             (self.initial_n_paths, StatTracker(discount), StatTracker(1))
             for _ in xrange(n_levels)
         ]
-        alpha = 0
 
         while sum(n for n, _, _ in trackers):
             for i, (n, payoff_tracker, cost_tracker) in enumerate(trackers):
-                self._run_level(i, n, payoff_tracker, cost_tracker)
+                self._run_level(option, i, n, payoff_tracker, cost_tracker)
 
             addl_n_values = self._determine_additional_n_values(trackers)
-            alpha = self._find_alpha([p for (_, p, _) in trackers[1:]])
+            alpha, beta, gamma = self._find_coefficients(*zip(*((p, c) for (_, p, c) in trackers[1:])))
 
             trackers = [
                 (addl_n, p, c)
@@ -288,10 +306,20 @@ class LayeredMCMCOptionSolver(OptionSolver):
             ]
 
             if all(n <= 0.01*p.count for n, p, _ in trackers):
-                remaining_error = trackers[-1][1].mean / (2**alpha - 1)
+                remaining_error = max(
+                    (t.mean * 2**(alpha*i)) / (2**alpha - 1)
+                    for i, (_, t, _) in enumerate(trackers[-2:], start=-2)
+                )
 
-                if remaining_error > (0.75**0.5)*self.target_mse:
-                    trackers.append((self.initial_n_paths, StatTracker(discount), StatTracker(1)))
+                if remaining_error > (0.5**0.5) * self.target_mse:
+                    guess_v = trackers[-1][1].variance  / (2^beta)
+                    guess_c = trackers[-1][2].mean * (2 ** gamma)
+                    term = (guess_v/guess_c) ** 0.5
+
+                    base = sum((t.variance/c.cost)**0.5 for _, t, c in trackers)
+                    base += term
+                    guess_n = 2 * term * base / (self.target_mse**2)
+                    trackers.append((guess_n, StatTracker(discount), StatTracker(1)))
 
         return sum(p.mean for _, p, _ in trackers)
 
@@ -299,3 +327,5 @@ class LayeredMCMCOptionSolver(OptionSolver):
         expiry = option.expiry
         risk_free = option.risk_free
         discount = math.exp(-risk_free * expiry)
+
+        return self._run_levels(option, discount)
