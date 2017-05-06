@@ -29,24 +29,22 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	\begin{align*}
 	dS_1(t) &= \mu_1 S_1(t) dt + \sigma_1 S_1(t) dW_1(t) \\
 	dS_2(t) &= \mu_2 S_2(t) dt + \sigma_2 S_2(t) dW_2(t)
-	\end{align*}
-	
+	\end{align*}	
 	In these equations, the two standard Brownian motions $W_1(t)$ and $W_2(t)$ are assumed to be correlated by a constant correlation coefficient $\rho$, satisfying $dW_1(t) \times dW_2(t) = \rho \times dt$. Then the Margrabe's formula indicates that the value of the European exchange option at time $t_0=0$ is:
 	\begin{align*}
 	C(0) &= e^{-q_1 T} S_1(0) N(d_1) - e^{-q_2 T} S_2(0) N(d_2) \\
 	d_1 &= \frac{ln(\frac{S_1(0)}{S_2(0)}) + (q_2 - q_1 + \frac{1}{2} \sigma^2) T}{\sigma \sqrt{T}} \\
 	d_2 &= d_1 - \sigma \sqrt{T} \\
 	\sigma &= \sqrt{\sigma_1^2 + \sigma_2^2 - 2 \rho \sigma_1 \sigma_2}
-	\end{align*}
-	
-	As we move from the Black-Scholes model to the Heston model, the key difference is that the volatility $\sigma$ associated with the diffusion term in the stock's SDE no longer remains a constant. Instead, in the Heston model, the square of the volatility (i.e. the variance) also follows a stochastic process characterized by an SDE. Hence, the dynamics of stock $S_i(t)$ in the Heston model consist of two equations as follows:
+	\end{align*}	
+	As we move from the Black-Scholes model to the Heston model, the key difference is that the volatility $\sigma$ associated with the diffusion term in the stock's SDE no longer remains a constant. Instead, in the Heston model, the square of the volatility (i.e. the variance) also follows a stochastic process characterized by an SDE. Hence, the dynamics of stock $S_i(t)$ in the Heston model consist of the equations as follows:
 	\begin{align*}
 	dS_i(t) &= \mu_i S_i(t) dt + \sqrt{\upsilon_i(t)} S_i(t) dW_i(t) \\
-	d\upsilon_i(t) &= \kappa_i (\theta_i - \upsilon_i(t)) dt + \sqrt{\upsilon_i(t)} dW_i(t)
+	d\upsilon_i(t) &= \kappa_i (\theta_i - \upsilon_i(t)) dt + \sqrt{\upsilon_i(t)} dZ_i(t) \\
+	dW_i(t) \times dZ_i(t) &= \rho_i dt
 	\end{align*}
-	
-	[variance is mean reverting]
-	
+	In this model, the variance $\upsilon_i(t)$ of the stock $S_i(t)$ follows a stochastic process with a mean-reverting characteristic. When $\upsilon_i(t)$ is higher than its mean-reverting level $\theta_i$, the drift term in the SDE of $\upsilon_i(t)$ becomes negative 
+		
 	[Heston for 2 correlated stocks]
 
 \section{Standard Monte Carlo for Euler-Maruyama path simulations}
