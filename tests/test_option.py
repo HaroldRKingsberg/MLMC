@@ -166,6 +166,23 @@ class LayeredMCOptionSolverTestCase(unittest.TestCase):
 
         self.assertGreaterEqual(in_bound_count, 0.95*n_runs)
 
+    def test_swaption(self):
+        spot = 100
+        strike = 110
+        risk_free = 0.05
+        expiry = 1
+        vol = 0.2
+
+        s1 = ConstantVolatilityStock(100, 0.2)
+        s2 = ConstantVolatilityStock(85, 0.4)
+        option = EuropeanSwaption([s1, s2], risk_free, expiry, False)
+
+        interval = 0.1
+
+        solver = LayeredMCOptionSolver(interval)
+
+        print solver.solve_option_price(option)
+
 
 if __name__ == '__main__':
     unittest.main()
