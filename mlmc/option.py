@@ -193,7 +193,114 @@ class NaiveMCOptionSolver(OptionSolver):
             return tracker.mean
 
 
-class HeuristicLayeredMCOptionSolver(OptionSolver):
+class LayeredMCOptionSolver(OptionSolver):
+
+    @abc.abstractmethod
+    def run_levels(self, option, discount):
+        return
+
+    def run_bottom_level(self, option, steps):
+        result = path.create_simple_path(option.assets,
+                                         option.risk_free,
+                                         option.expiry,
+                                         1,
+                                         self.rng_creator)
+        return option.determine_payoff(*result),
+
+    def run_upper_level(self, option, steps):
+        result = path.create_layer_path(option.assets,
+                                        option.risk_free,
+                                        option.expiry,
+                                        steps,
+                                        self.rng_creator,
+                                        K=self.level_scaling_factor)
+        coarse, fine = zip(*result)
+        payoff_coarse = option.determine_payoff(*coarse)
+        payoff_fine = option.determine_payoff(*fine)
+
+        return (payoff_fine - payoff_coarse),
+
+    def run_level(self, option, i, n, *trackers):
+        steps = self.level_scaling_factor ** i
+
+        if i == 0:
+            fn = self.run_bottom_level
+        else:
+            fn = self.run_upper_level
+
+        for _ in xrange(n):
+            for s, t in zip(fn(option, steps), trackers):
+                t.add_sample(s)
+
+    def solve_option_price(self, option):
+        expiry = option.expiry
+        risk_free = option.risk_free
+        discount = math.exp(-risk_free * expiry)
+
+        return self.run_levels(option, discount)
+
+
+class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
+
+    def __init__(self,
+                 max_interval_length,
+                 level_scaling_factor=4,
+                 base_steps=10000,
+                 rng_creator=None):
+        self.max_interval_length = max_interval_length
+        self.level_scaling_factor = max(level_scaling_factor, 2)
+        self.base_steps = base_steps
+        self.rng_creator = rng_creator
+
+    def _determine_additional_steps(self, option, trackers):
+        find_dt = lambda l:  option.expiry / (self.level_scaling_factor ** l)
+        tot = 2 * (self.max_interval_length ** -2) * sum(
+            (t.variance/find_dt(L)) ** 0.5
+            for L, t in enumerate(trackers)
+        )
+        ideal_ns = (
+            tot * (t.variance * find_dt(L)) ** 0.5
+            for L, t in enumerate(trackers)
+        )
+        return [
+            int(math.ceil(max((ideal_n - t.count), 0)))
+            for ideal_n, t in zip(ideal_ns, trackers)
+        ]
+
+    def _is_error_too_high(self, trackers):
+        t1, t2 = trackers[-2:]
+
+        empirical = t2.mean - t1.mean/self.level_scaling_factor
+        estimated = ((self.level_scaling_factor**2 - 1) * self.max_interval_length / (2**0.5))
+        return estimated < empirical
+
+    def run_levels(self, option, discount):
+        trackers = [
+            (self.base_steps, StatTracker(discount))
+            for _ in xrange(3)
+        ]
+
+        while sum(n for n, _ in trackers) > 0:
+            for L, (n, t) in enumerate(trackers):
+                self.run_level(option, L, n, t)
+
+            addl_steps = self._determine_additional_steps(option, 
+                                                          [x[1] for x in trackers])
+
+            nt = []
+            for L, (addl, (n, t)) in enumerate(zip(addl_steps, trackers)):
+                self.run_level(option, L, addl, t)
+                nt.append((0, t))
+
+            trackers = nt
+
+            if self._is_error_too_high([x[1] for x in trackers]):
+                trackers.append((self.base_steps, StatTracker(discount)))
+
+        return sum(t.mean for _, t in trackers)
+
+
+class HeuristicLayeredMCOptionSolver(LayeredMCOptionSolver):
 
     def __init__(self,
                  target_mse,
@@ -223,45 +330,12 @@ class HeuristicLayeredMCOptionSolver(OptionSolver):
 
             delta = d2 - d1
             delta = delta.seconds + delta.microseconds*1e-6
-            return delta, res
+            return delta, res[0]
 
         return wrapper
 
-    @cost_determined
-    def _run_bottom_level(self, option, steps):
-        result = path.create_simple_path(option.assets,
-                                         option.risk_free,
-                                         option.expiry,
-                                         1,
-                                         self.rng_creator)
-        return option.determine_payoff(*result)
-
-    @cost_determined
-    def _run_upper_level(self, option, steps):
-        result = path.create_layer_path(option.assets,
-                                        option.risk_free,
-                                        option.expiry,
-                                        steps,
-                                        self.rng_creator,
-                                        K=self.level_scaling_factor)
-        coarse, fine = zip(*result)
-        payoff_coarse = option.determine_payoff(*coarse)
-        payoff_fine = option.determine_payoff(*fine)
-
-        return payoff_fine - payoff_coarse
-
-    def _run_level(self, option, i, n, payoff_tracker, cost_tracker):
-        steps = self.level_scaling_factor ** i
-
-        if i == 0:
-            fn = self._run_bottom_level
-        else:
-            fn = self._run_upper_level
-
-        for _ in xrange(n):
-            cost, payoff = fn(option, steps)
-            cost_tracker.add_sample(cost)
-            payoff_tracker.add_sample(payoff)
+    run_bottom_level = cost_determined(LayeredMCOptionSolver.run_bottom_level)
+    run_upper_level = cost_determined(LayeredMCOptionSolver.run_upper_level)
 
     def _determine_additional_n_values(self, trackers):
         overall = int(math.ceil(sum(
@@ -297,7 +371,7 @@ class HeuristicLayeredMCOptionSolver(OptionSolver):
 
         return alpha, beta, gamma
 
-    def _run_levels(self, option, discount):
+    def run_levels(self, option, discount):
         n_levels = self.initial_n_levels
         trackers = [
             (self.initial_n_paths, StatTracker(discount), StatTracker(1))
@@ -306,7 +380,7 @@ class HeuristicLayeredMCOptionSolver(OptionSolver):
 
         while sum(n for n, _, _ in trackers):
             for i, (n, payoff_tracker, cost_tracker) in enumerate(trackers):
-                self._run_level(option, i, n, payoff_tracker, cost_tracker)
+                self.run_level(option, i, n, cost_tracker, payoff_tracker)
 
             addl_n_values = self._determine_additional_n_values(trackers)
             alpha, beta, gamma = self._find_coefficients(*zip(*((p, c) for (_, p, c) in trackers[1:])))
@@ -334,10 +408,3 @@ class HeuristicLayeredMCOptionSolver(OptionSolver):
                     trackers.append((guess_n, StatTracker(discount), StatTracker(1)))
 
         return sum(p.mean for _, p, _ in trackers)
-
-    def solve_option_price(self, option):
-        expiry = option.expiry
-        risk_free = option.risk_free
-        discount = math.exp(-risk_free * expiry)
-
-        return self._run_levels(option, discount)

@@ -6,6 +6,7 @@ from mlmc.option import (EuropeanStockOption,
                          EuropeanSwaption,
                          AnalyticEuropeanStockOptionSolver,
                          NaiveMCOptionSolver,
+                         SimpleLayeredMCOptionSolver,
                          HeuristicLayeredMCOptionSolver)
 from mlmc.stock import ConstantVolatilityStock
 from analytic import black_scholes
@@ -129,6 +130,57 @@ class NaiveMCOptionSolverTestCase(unittest.TestCase):
         lower_bound = expected - interval
         upper_bound = expected + interval
         solver = NaiveMCOptionSolver(interval)
+        n_runs = 20
+
+        in_bound_count = sum(
+            1 for _ in xrange(n_runs)
+            if lower_bound <= solver.solve_option_price(option) <= upper_bound
+        )
+
+        self.assertGreaterEqual(in_bound_count, 0.95*n_runs)
+
+
+class SimpleLayeredMCOptionSolverTestCase(unittest.TestCase):
+
+    def test_put_option(self):
+        spot = 100
+        strike = 110
+        risk_free = 0.05
+        expiry = 1
+        vol = 0.2
+
+        stock = ConstantVolatilityStock(spot, vol)
+        option = EuropeanStockOption([stock], risk_free, expiry, False, strike)
+
+        interval = 0.1
+        expected = 10.6753248248
+        lower_bound = expected - interval
+        upper_bound = expected + interval
+        solver = SimpleLayeredMCOptionSolver(interval)
+        n_runs = 20
+
+        in_bound_count = sum(
+            1 for _ in xrange(n_runs)
+            if lower_bound <= solver.solve_option_price(option) <= upper_bound
+        )
+
+        self.assertGreaterEqual(in_bound_count, 0.95*n_runs)
+
+    def test_call_option(self):
+        spot = 100
+        strike = 110
+        risk_free = 0.05
+        expiry = 1
+        vol = 0.2
+
+        stock = ConstantVolatilityStock(spot, vol)
+        option = EuropeanStockOption([stock], risk_free, expiry, True, strike)
+
+        interval = 0.1
+        expected = 6.04008812972
+        lower_bound = expected - interval
+        upper_bound = expected + interval
+        solver = SimpleLayeredMCOptionSolver(interval)
         n_runs = 20
 
         in_bound_count = sum(
