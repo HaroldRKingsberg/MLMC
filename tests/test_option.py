@@ -3,6 +3,7 @@ import math
 import unittest
 
 from mlmc.option import (EuropeanStockOption,
+                         EuropeanSwaption,
                          AnalyticEuropeanStockOptionSolver,
                          NaiveMCOptionSolver,
                          LayeredMCOptionSolver)
@@ -22,6 +23,21 @@ class EuropeanStockOptionTestCase(unittest.TestCase):
         sut = EuropeanStockOption([stock], 0.05, 1, False, 10)
         self.assertEqual(sut.determine_payoff(6), 4)
         self.assertEqual(sut.determine_payoff(15), 0)
+
+
+class EuropeanSwaptionTestCase(unittest.TestCase):
+
+    def test_valuation_for_call(self):
+        stock = ConstantVolatilityStock(10, 1)
+        sut = EuropeanSwaption([stock, stock], 0.05, 1, True)
+        self.assertEqual(sut.determine_payoff(10, 4), 6)
+        self.assertEqual(sut.determine_payoff(4, 10), 0)
+
+    def test_valuation_for_put(self):
+        stock = ConstantVolatilityStock(10, 1)
+        sut = EuropeanSwaption([stock, stock], 0.05, 1, False)
+        self.assertEqual(sut.determine_payoff(10, 4), 0)
+        self.assertEqual(sut.determine_payoff(4, 10), 6)
 
 
 class AnalyticEuropeanStockOptionSolverTestCase(unittest.TestCase):

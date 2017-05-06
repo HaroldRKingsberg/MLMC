@@ -46,6 +46,18 @@ class EuropeanStockOption(Option):
         return max(v1 - v2, 0)
 
 
+class EuropeanSwaption(Option):
+    def __init__(self, assets, risk_free, expiry, is_call):
+        if len(assets) != 2:
+            raise ValueError('Requires two underlying assets')
+
+        super(EuropeanSwaption, self).__init__(assets, risk_free, expiry, is_call)
+
+    def determine_payoff(self, s1_final_spot, s2_final_spot, *args, **kwargs):
+        v1, v2 = (s1_final_spot, s2_final_spot) if self.is_call else (s2_final_spot, s1_final_spot)
+        return max(v1 - v2, 0)
+
+
 class OptionSolver(object):
 
     __metaclass__ = abc.ABCMeta
