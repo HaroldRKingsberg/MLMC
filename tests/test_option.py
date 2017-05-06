@@ -6,7 +6,7 @@ from mlmc.option import (EuropeanStockOption,
                          EuropeanSwaption,
                          AnalyticEuropeanStockOptionSolver,
                          NaiveMCOptionSolver,
-                         LayeredMCOptionSolver)
+                         HeuristicLayeredMCOptionSolver)
 from mlmc.stock import ConstantVolatilityStock
 from analytic import black_scholes
 
@@ -139,7 +139,7 @@ class NaiveMCOptionSolverTestCase(unittest.TestCase):
         self.assertGreaterEqual(in_bound_count, 0.95*n_runs)
 
 
-class LayeredMCOptionSolverTestCase(unittest.TestCase):
+class HeuristicLayeredMCOptionSolverTestCase(unittest.TestCase):
 
     def test_put_option(self):
         spot = 100
@@ -155,7 +155,7 @@ class LayeredMCOptionSolverTestCase(unittest.TestCase):
         expected = 10.6753248248
         lower_bound = expected - (2*interval)
         upper_bound = expected + (2*interval)
-        solver = LayeredMCOptionSolver(interval)
+        solver = HeuristicLayeredMCOptionSolver(interval)
         n_runs = 20
         in_bound_count = 0
 
@@ -179,7 +179,7 @@ class LayeredMCOptionSolverTestCase(unittest.TestCase):
 
         interval = 0.1
 
-        solver = LayeredMCOptionSolver(interval)
+        solver = HeuristicLayeredMCOptionSolver(interval)
 
         print solver.solve_option_price(option)
 

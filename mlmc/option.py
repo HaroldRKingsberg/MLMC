@@ -193,7 +193,7 @@ class NaiveMCOptionSolver(OptionSolver):
             return tracker.mean
 
 
-class LayeredMCOptionSolver(OptionSolver):
+class HeuristicLayeredMCOptionSolver(OptionSolver):
 
     def __init__(self,
                  target_mse,
