@@ -23,31 +23,64 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	Section 2 below describes the specifications of a European stock exchange option, as well as the Heston model for the evolutions of a stock's price and its stochastic volatility. Section 3 outlines the Euler-Maruyama method in discretizing the paths of a stock's price and volatility, followed by section 4 on the standard Monte Carlo method to simulate these paths. Section 5 then describes the MLMC algorithm [TBD...]
 
 \section{The Heston model and the European stock exchange option}
-	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option at time T is: $C(T)=max[0, S_1(T)-S_2(T)]$
+	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option at time T is: $C(T)=max[0, S_1(T)-S_2(T)]$.
 	
 	Under the standard Black-Scholes assumptions, this exchange option can be priced using the Margrabe's formula given by \cite{margrabe78}. The assumptions are that the stocks $S_1$ and $S_2$ have continuous dividend yield $q_1$ and $q_2$, respectively, and that their prices evolve based on the stochastic differential equation (SDE) with constant volatility as follows: 
-	\begin{align*}
+	
+	\begin{align}
 	dS_1(t) &= \mu_1 S_1(t) dt + \sigma_1 S_1(t) dW_1(t) \\
 	dS_2(t) &= \mu_2 S_2(t) dt + \sigma_2 S_2(t) dW_2(t)
-	\end{align*}	
+	\end{align}	
+	
 	In these equations, the two standard Brownian motions $W_1(t)$ and $W_2(t)$ are assumed to be correlated by a constant correlation coefficient $\rho$, satisfying $dW_1(t) \times dW_2(t) = \rho \times dt$. Then the Margrabe's formula indicates that the value of the European exchange option at time $t_0=0$ is:
-	\begin{align*}
+	
+	\begin{align}
 	C(0) &= e^{-q_1 T} S_1(0) N(d_1) - e^{-q_2 T} S_2(0) N(d_2) \\
 	d_1 &= \frac{ln(\frac{S_1(0)}{S_2(0)}) + (q_2 - q_1 + \frac{1}{2} \sigma^2) T}{\sigma \sqrt{T}} \\
 	d_2 &= d_1 - \sigma \sqrt{T} \\
 	\sigma &= \sqrt{\sigma_1^2 + \sigma_2^2 - 2 \rho \sigma_1 \sigma_2}
-	\end{align*}	
+	\end{align}	
+	
 	As we move from the Black-Scholes model to the Heston model, the key difference is that the volatility $\sigma$ associated with the diffusion term in the stock's SDE no longer remains a constant. Instead, in the Heston model, the square of the volatility (i.e. the variance) also follows a stochastic process characterized by an SDE. Hence, the dynamics of stock $S_i(t)$ in the Heston model consist of the equations as follows:
-	\begin{align*}
+	
+	\begin{align}
 	dS_i(t) &= \mu_i S_i(t) dt + \sqrt{\upsilon_i(t)} S_i(t) dW_i(t) \\
-	d\upsilon_i(t) &= \kappa_i (\theta_i - \upsilon_i(t)) dt + \sqrt{\upsilon_i(t)} dZ_i(t) \\
+	d\upsilon_i(t) &= \kappa_i (\theta_i - \upsilon_i(t)) dt + \gamma \sqrt{\upsilon_i(t)} dZ_i(t) \\
 	dW_i(t) \times dZ_i(t) &= \rho_i dt
-	\end{align*}
-	In this model, the variance $\upsilon_i(t)$ of the stock $S_i(t)$ follows a stochastic process with a mean-reverting characteristic. When $\upsilon_i(t)$ is higher than its mean-reverting level $\theta_i$, the drift term in the SDE of $\upsilon_i(t)$ becomes negative 
-		
-	[Heston for 2 correlated stocks]
-
+	\end{align}
+	where $\kappa, \theta, \gamma$ are strictly positive constants, with $W_i(t)$ and $Z_i(t)$ being correlated one-dimensional Brownian motions. When the SDE is specified in the risk-neutral measure, the drift term associated with $S_i(t)$ satisfies $\mu_i = r$ where $r$ is the risk-free instantaneous interest rate.
+			
+	In this model, the variance $\upsilon_i(t)$ of the stock $S_i(t)$ follows a stochastic process with a mean-reverting characteristic. When $\upsilon_i(t)$ is higher than its mean-reverting level $\theta_i$, the drift term in the SDE of $\upsilon_i(t)$ becomes negative. The variance then has an underlying tendency to drift back to $\theta_i$. The opposite happens when the variance $\upsilon_i(t)$ is lower than its mean-reverting level $\theta_i$. Meanwhile, the constant parameter $\kappa_i$ influences the speed with which the variance reverts to $\theta_i$. 
+	
+	When we simulate the evolution of two stocks $S_1$ and $S_2$ in the Heston model, we will need to specify in advance the constant correlation coefficients for the Brownian motions in each of the stock's SDE and its associated variance's SDE. Specifically, we will need to specify the following symmetric positive definite correlation matrix for the four Brownian motions driving the diffusion terms:
+	
+	\begin{equation}
+	corr
+	\begin{bmatrix} 
+	W_1  \\
+	W_2  \\
+	Z_1  \\
+	Z_2  \\
+	\end{bmatrix}
+	=
+	\begin{bmatrix} 
+	1 & \rho(W_1,W_2) & \rho(W_1,Z_1) & \rho(W_1,Z_2) \\
+	\rho(W_2,W_1) & 1 & \rho(W_2,Z_1) & \rho(W_2,Z_2) \\
+	\rho(Z_1,W_1) & \rho(Z_1,W_2) & 1 & \rho(Z_1,Z_2) \\
+	\rho(Z_2,W_1) & \rho(Z_2,W_2) & \rho(Z_2,Z_1) & 1 \\
+	\end{bmatrix}
+	\end{equation}
+	
 \section{Standard Monte Carlo for Euler-Maruyama path simulations}
+	At the current time $t_0=0$, we are concerned with the payoff of an option with the expiry time $T$. We are thus interested in simulating the evolution of the stocks' prices over possible paths between the time $[0,T]$. The Euler-Maruyama in path discretization starts with dividing this time interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where the notations include: $h = T/K$, $t_0=0$, $t_k=k \times h$. We start with $S_i(t_0)=S(0)$ and in order to simulate the stock price over one step from $S_i(t_k)$ to $S_i(t_{k+1})$ as well as to let its variance evolve in the Heston model, the full truncation method (\cite{andersen07}) indicates that:
+	\begin{align}
+	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \upsilon_i(t_k)] h + \sqrt{\upsilon_i(t_k)} dW_i \} \\
+	
+	\upsilon_i(t_{k+1}) - \upsilon_i(t_k) &= \kappa_i (\theta_i - \upsilon_i(t_k)^+) h + \sqrt{\upsilon_i(t_k)^+} dZ_i(t) \\
+	dW_i(t) \times dZ_i(t) &= \rho_i dt
+	\end{align}
+	
+	[Ito SDE for stock to solve and simulate one stock step]
 	[Euler for simple stock]
 	[Full truncation for Heston model]
 
