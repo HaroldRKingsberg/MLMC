@@ -23,9 +23,9 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	Section 2 below describes the specifications of a European stock exchange option, as well as the Heston model for the evolutions of a stock's price and its stochastic volatility. Section 3 outlines the Euler-Maruyama method in discretizing the paths of a stock's price and volatility, followed by section 4 on the standard Monte Carlo method to simulate these paths. Section 5 then describes the MLMC algorithm [TBD...]
 
 \section{The Heston model and the European stock exchange option}
-	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option at time T is: $C(T)=max[0, S_1(T)-S_2(T)]$.
-	
-	Under the standard Black-Scholes assumptions, this exchange option can be priced using the Margrabe's formula given by \cite{margrabe78}. The assumptions are that the stocks $S_1$ and $S_2$ have continuous dividend yield $q_1$ and $q_2$, respectively, and that their prices evolve based on the stochastic differential equation (SDE) with constant volatility as follows: 
+	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option at time T is: $C(T)=max[0, S_1(T)-S_2(T)]$. The aim of our project is to employ Monte Carlo simulation to estimate the price of this European exchange option at time $t_0=0$ under the Heston stochastic volatility model.
+    
+    Before discussing the Heston model, we discuss the standard Black-Scholes assumptions, under which this exchange option can be priced using the Margrabe's formula given by \cite{margrabe78}. The Black-Scholes assumptions are that the stocks $S_1$ and $S_2$ have continuous dividend yield $q_1$ and $q_2$, respectively, and that their prices evolve based on the stochastic differential equation (SDE) with constant volatility as follows: 
 	
 	\begin{align}
 	dS_1(t) &= \mu_1 S_1(t) dt + \sigma_1 S_1(t) dW_1(t) \\
@@ -72,7 +72,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	\end{equation}
 	
 \section{Standard Monte Carlo for Euler-Maruyama path simulations}
-	At the current time $t_0=0$, we are concerned with the payoff of an option with the expiry time $T$. We are thus interested in simulating the evolution of the stocks' prices over possible paths between the time $[0,T]$. The Euler-Maruyama in path discretization starts with dividing this time interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where the notations include: $h = T/K$, $t_0=0$, $t_k=k \times h$. We start with $S_i(t_0)=S(0)$ and in order to simulate the stock price over one step from $S_i(t_k)$ to $S_i(t_{k+1})$ as well as to let its variance evolve in the Heston model, the full truncation method (\cite{andersen07}) indicates that:
+	At the current time $t_0=0$, we are concerned with the payoff of an option with the expiry time $T$. We are interested in simulating the evolution of the stocks' prices over possible paths between the time $[0,T]$. The Euler-Maruyama in path discretization starts with dividing this time interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where the notations include: $h = T/K$, $t_0=0$, $t_k=k \times h$. We start with $S_i(t_0)=S(0)$ and in order to simulate the stock price over one step from $S_i(t_k)$ to $S_i(t_{k+1})$ as well as to let its variance evolve in the Heston model, the full truncation method (\cite{andersen07}) indicates that:
 	\begin{align}
 	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \upsilon_i(t_k)^+] h + \sqrt{\upsilon_i(t_k)^+} dW_i \} \\
 		
@@ -87,8 +87,13 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \sigma_i^2] h + \sigma_i dW_i \}
 	\end{align}
 	
-	Then using the above Euler-Maruyama path discretization, we can simulate one path travelled by the stock price(s) between $[0,T]$, and calculate the payoff of an European option $C(T)$ based on the terminal stock prices $S_i(T)$. For the vanilla European call option, this payoff will be $C(T)=max[S(t_K)-strike,0]$. For the European stock swap option, this payoff will be $C(T)=max[S_1(t_K)-S_2(t_K),0]$. We repeat the multi-step simulation in order to sample $N$ paths, and the average over these paths (after appropriate discounting) is an estimator of the price of the option at the current time t=0.
-	[insert average equation]
+	Then using the above Euler-Maruyama path discretization, we can simulate one path travelled by the stock price(s) between $[0,T]$, and calculate the payoff of an European option $C(T)$ based on the terminal stock prices $S_i(T)$. For the vanilla European call option, this payoff will be $C(T)=max[S(t_K)-strike,0]$. For the European stock swap option, this payoff will be $C(T)=max[S_1(t_K)-S_2(t_K),0]$. We repeat the multi-step simulation in order to sample $N$ independent paths, and the average over these paths (after appropriate discounting) is an estimator of the price of the option at the current time $t_0=0$:
+    \begin{equation}
+    \widehat{C(0)}= D \times N^{-1} \times \sum_{i=1}^N C(\widehat{S(T)},T)
+    \end{equation}
+	where $D$ represents the discount factor. For example, $D=e^{-rT}$ where $r$ is the constant risk-free rate and the stock dynamics are specified and simulated in the risk-neutral probability measure.
+    
+    According to Giles 08, provided that the drift and diffusion of the stock satisfy the global Lipschitz condition, 
 	
 	[Ito SDE for stock to solve and simulate one stock step]
 	[Euler for simple stock]
