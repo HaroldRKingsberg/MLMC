@@ -4,6 +4,28 @@
 \usepackage{indentfirst}
 \usepackage{graphicx}
 
+\usepackage{listings}
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+    language=Python,
+    aboveskip=3mm,
+    belowskip=3mm,
+    showstringspaces=false,
+    columns=flexible,
+    basicstyle={\small\ttfamily},
+    numbers=none,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{dkgreen},
+    stringstyle=\color{mauve},
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=4
+}
+
 \title{Monte Carlo Course Group Project \\ 
 Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 \author{Harold Kingsberg, Minh Tran, Peter Will}
@@ -95,7 +117,25 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     
     This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$ of the stock satisfies certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method has an expected mean square error (MSE) that is asymptotically $O(N^{-1}) + O(h^2)$. 
     
-    We target a certain level of accuracy expressed by $\epsilon$, the width of the confidence interval given by the Monte Carlo estimator. Specifying $\epsilon$ is equivalent to specifying a target standard deviation of the estimator as well as confidence level such as 90% or 95%. The MSE will then be $O(\epsilon^2)$. In order to achieve this level of accuracy via standard MC simulations, we will need the number of independent paths $N \sim O(\epsilon^{-2})$ and the step size $h \sim O(\epsilon)$. Given that on each single path the MC algorithm takes $T/h$ number of steps, the total computing effort from standard MC is $O(Nh^{-1})$, or $O(\epsilon^{-3})$. 
+    We target a certain level of accuracy expressed by $\epsilon$, the width of the confidence interval given by the Monte Carlo estimator. Specifying $\epsilon$ is equivalent to specifying a target standard deviation of the estimator as well as confidence level such as 90\% or 95\%. The MSE will then be $O(\epsilon^2)$. In order to achieve this level of accuracy via standard MC simulations, we will need the number of independent paths $N \sim O(\epsilon^{-2})$ and the step size $h \sim O(\epsilon)$. Given that on each single path the MC algorithm takes $T/h$ number of steps, the total computing effort from standard MC is $O(Nh^{-1})$, or $O(\epsilon^{-3})$. 
+    
+    For our group project, we implemented the following standard MC algorithm (for illustration and comparison with MLMC):
+    \begin{lstlisting}
+    if (num_steps is not provided):
+        num_steps_per_path = T / epsilon
+    stat_tracker = new empty statistics tracker of simulated payoffs
+    set the appropriate discount factor on sampled payoffs for stat_tracker
+    while (std error given by stat_tracker > target std error):
+        path = new simulated path
+        payoff = calculate payoff from path
+        stat_tracker.add(payoff)
+        update the sample mean and std error of stat_tracker
+    std_MC_estimator = stat_tracker.mean
+    std_MC_sample_error = stat_tracker.stdev
+    return std_MC_estimator, std_MC_sample_error
+    \end{lstlisting}
+    
+    
     
     write numerical algorithm while() for standard MC
     
