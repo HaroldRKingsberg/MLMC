@@ -83,7 +83,6 @@ class AnalyticEuropeanStockOptionSolver(OptionSolver):
 
         d1 = (log_diff + (risk_free + vt)*expiry) / denom
         d2 = (log_diff + (risk_free - vt)*expiry) / denom
-        # F = spot * math.exp(expiry * risk_free)
 
         discount = math.exp(-risk_free * expiry)
         
@@ -220,13 +219,13 @@ class LayeredMCOptionSolver(OptionSolver):
 
         return (payoff_fine - payoff_coarse),
 
-    def run_level(self, option, i, n, *trackers):
-        steps = self.level_scaling_factor ** i
-
-        if i == 0:
+    def run_level(self, option, L, n, *trackers):
+        if L == 0:
             fn = self.run_bottom_level
+            steps = 1
         else:
             fn = self.run_upper_level
+            steps = self.level_scaling_factor ** (L - 1)
 
         for _ in xrange(n):
             for s, t in zip(fn(option, steps), trackers):
