@@ -1,0 +1,46 @@
+Graphs we need 
+
+1. Graphs to show performance of MLMC and verify convergence theories of MLMC
+    # you can find these graphs on pg 31 of 2015 paper and 613 of 2008 paper
+    # we need to graph level running from 2 here instead of 0 or 1 because Harold slightly changed the algo to start from L=2
+    
+    1.1. graph level versus log_base2 of variance(somefunc)
+        xaxis: level from 2 to max L (max L is when it converged and stopped)
+        yaxis: log_2 variance of P(L) where P(L) is the average of payoff on N(L) paths; this var is based on N(L) paths 
+               log_2 variance of Y(L) = P(L) - P(L-1); this var is also based on N(L) paths 
+    
+    1.2. graph level versus log_base2 of mean, aka the average, of some func below
+        xaxis: level from 2 to max L (max L is when it converged and stopped)
+        yaxis: log_2 of the mean of P(L); this is also based on N(L) paths
+               log_2 of the mean of Y(L) = P(L) - P(L-1); this is also based on N(L) paths
+    
+    1.3. graph level versus the optimal num paths N(L) at that level
+        # we graph for 4-5 levels of pre-chosen epsilon, the target confidence level width
+        xaxis: level from 2 to max L (max L is when it converged and stopped)
+        yaxis: N(L) the num paths required at this level 
+        legend: one line for each chosen epsilon
+        
+    1.4. graph epsilon vs run time cost        
+        xaxis: different values of epsilon we chose 
+        yaxis: run time length measured in time as Harold wrote in functions. 
+        legend: one for std MC and one line for MLMC
+
+2. Graphs to show error bar performance of MLMC 
+    # these are my suggestions for graphs because the prof said he's most interested in seeing our error bars for MLMC
+    # the MLMC estimator is Y = Y(0) + sum of Y(L) where Y(L) = average of payoff(L) - payoff(L-1)
+    # the estimated var of Y is sum of var(Y(L)) for L from 0 to convergence. 
+    # when the vol term sigma is well behaved, var of Y should satisfy the inputted epsilon
+    # but when vol term is Heston, no guarantee that var of Y satisfies epsilon
+    # thus we should make graphs to compare them and see how MLMC formula for convergence of Y compares to epsilon
+    
+    2.1. histogram of MLMC estimator Y, for a pre chosen epsilon such as 0.1 or 0.05
+        # we run 1k or 10k times, each time we get one value of Y
+        # we report how many runs of Y fall outside epsilon range (only if the true value is known)
+        # also compare empirical var(Y) from 10k runs with the target st dev per epsilon
+        xaxis: values of Y in 1k or 10k runs 
+        yxis: frequency of Y values
+
+I'm suggesting that we do the graphs above for each of the 3 cases:
+    a. A vanilla European call on a constant vol stock (closed form solution given)
+    b. An exchange option on two constant vol stocks (closed form solution given under margrabe function in analytic.py)
+    c. An exchange option on two Heston vol stocks
