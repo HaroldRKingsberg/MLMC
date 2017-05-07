@@ -83,7 +83,6 @@ class AnalyticEuropeanStockOptionSolver(OptionSolver):
 
         d1 = (log_diff + (risk_free + vt)*expiry) / denom
         d2 = (log_diff + (risk_free - vt)*expiry) / denom
-        # F = spot * math.exp(expiry * risk_free)
 
         discount = math.exp(-risk_free * expiry)
         
@@ -145,10 +144,15 @@ class StatTracker(object):
 
 class NaiveMCOptionSolver(OptionSolver):
 
-    def __init__(self, max_interval_length, confidence_level=0.95, rng_creator=None):
+    def __init__(self, 
+                 max_interval_length, 
+                 confidence_level=0.95, 
+                 rng_creator=None,
+                 n_steps=None):
         self.max_interval_length = max_interval_length
         self.confidence_level = confidence_level
         self.rng_creator = rng_creator
+        self.n_steps = n_steps
 
     @property
     def confidence_level(self):
@@ -183,7 +187,7 @@ class NaiveMCOptionSolver(OptionSolver):
         risk_free = option.risk_free
         discount = math.exp(-risk_free * expiry)
 
-        n_steps = int(math.floor(expiry / self.max_interval_length))
+        n_steps = self.n_steps or int(math.floor(expiry / self.max_interval_length))
 
         tracker = self._simulate_paths(option, n_steps, discount)
 
@@ -220,13 +224,13 @@ class LayeredMCOptionSolver(OptionSolver):
 
         return (payoff_fine - payoff_coarse),
 
-    def run_level(self, option, i, n, *trackers):
-        steps = self.level_scaling_factor ** i
-
-        if i == 0:
+    def run_level(self, option, L, n, *trackers):
+        if L == 0:
             fn = self.run_bottom_level
+            steps = 1
         else:
             fn = self.run_upper_level
+            steps = self.level_scaling_factor ** (L - 1)
 
         for _ in xrange(n):
             for s, t in zip(fn(option, steps), trackers):
