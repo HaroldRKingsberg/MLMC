@@ -105,9 +105,9 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	where the increments of the Brownian motions, $dW_i$ and $dZ_i$, are sampled from correlated normal distributions with mean equal to 0, variance equal to the size of the incremental time step $h$, and correlations as specified in the correlation matrix (number xxx). 
 	
 	Under the Black-Scholes model, this path simulation simplifies to:
-	\begin{align}
-	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \sigma_i^2] h + \sigma_i dW_i \}
-	\end{align}
+	\begin{equation}
+	S_i(t_{k+1}) = S_i(t_k) \times exp[(\mu_i - \frac{1}{2} \sigma_i^2) h + \sigma_i dW_i]
+	\end{equation}
 	
 	Using the above Euler-Maruyama path discretization, we can simulate one path travelled by the stock price(s) in the interval $[0,T]$, and calculate the payoff of an European option $C(T)$ based on the terminal stock prices $S_i(T)$ on this single path. For the vanilla European call option, this payoff will be $C(T)=max[S(t_K)-strike,0]$. For the European stock swap option, this payoff will be $C(T)=max[S_1(t_K)-S_2(t_K),0]$. We repeat the multi-step simulation in order to sample $N$ independent paths, and the average over these paths (after appropriate discounting) is an estimator of the price of the option at the current time $t_0=0$:
     \begin{equation}
