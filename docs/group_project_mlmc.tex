@@ -12,8 +12,8 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 \begin{document}
 \maketitle
 \tableofcontents
-\newpage
 
+\newpage
 \section{Introduction} 
 	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo method which has computing cost of $O(\epsilon^{-3})$. For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods.
 	
@@ -27,29 +27,29 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     
     Before discussing the Heston model, we discuss the standard Black-Scholes assumptions, under which this exchange option can be priced using the Margrabe's formula given by \cite{margrabe78}. The Black-Scholes assumptions are that the stocks $S_1$ and $S_2$ have continuous dividend yield $q_1$ and $q_2$, respectively, and that their prices evolve based on the stochastic differential equation (SDE) with constant volatility as follows: 
 	
-	\begin{align}
+	\begin{align*}
 	dS_1(t) &= \mu_1 S_1(t) dt + \sigma_1 S_1(t) dW_1(t) \\
 	dS_2(t) &= \mu_2 S_2(t) dt + \sigma_2 S_2(t) dW_2(t)
-	\end{align}	
+	\end{align*}	
 	
-	In these equations, the two standard Brownian motions $W_1(t)$ and $W_2(t)$ are assumed to be correlated by a constant correlation coefficient $\rho$, satisfying $dW_1(t) \times dW_2(t) = \rho \times dt$. Then the Margrabe's formula indicates that the value of the European exchange option at time $t_0=0$ is:
+	In these equations, the two standard Brownian motions $W_1(t)$ and $W_2(t)$ are assumed to be correlated by a constant correlation coefficient $\rho$, satisfying $dW_1(t) \times dW_2(t) = \rho \times dt$. When the dynamics of the stocks are specified in the risk-neutral measure, the drift term $\mu_i$ is changed into $r-q_i$, where $r$ is the risk-free instantaneous interest rate. Then the Margrabe's formula indicates that the value of the European exchange option at time $t_0=0$ is:
 	
-	\begin{align}
+	\begin{align*}
 	C(0) &= e^{-q_1 T} S_1(0) N(d_1) - e^{-q_2 T} S_2(0) N(d_2) \\
 	d_1 &= \frac{ln(\frac{S_1(0)}{S_2(0)}) + (q_2 - q_1 + \frac{1}{2} \sigma^2) T}{\sigma \sqrt{T}} \\
 	d_2 &= d_1 - \sigma \sqrt{T} \\
 	\sigma &= \sqrt{\sigma_1^2 + \sigma_2^2 - 2 \rho \sigma_1 \sigma_2}
-	\end{align}	
+	\end{align*}	
 	
 	As we move from the Black-Scholes model to the Heston model, the key difference is that the volatility $\sigma$ associated with the diffusion term in the stock's SDE no longer remains a constant. Instead, in the Heston model, the square of the volatility (i.e. the variance) also follows a stochastic process characterized by an SDE. Hence, the dynamics of stock $S_i(t)$ in the Heston model consist of the equations as follows:
 	
-	\begin{align}
+	\begin{align*}
 	dS_i(t) &= \mu_i S_i(t) dt + \sqrt{\upsilon_i(t)} S_i(t) dW_i(t) \\
 	d\upsilon_i(t) &= \kappa_i (\theta_i - \upsilon_i(t)) dt + \gamma \sqrt{\upsilon_i(t)} dZ_i(t) \\
 	dW_i(t) \times dZ_i(t) &= \rho_i dt
-	\end{align}
-	where $\kappa, \theta, \gamma$ are strictly positive constants, with $W_i(t)$ and $Z_i(t)$ being correlated one-dimensional Brownian motions. When the SDE is specified in the risk-neutral measure, the drift term associated with $S_i(t)$ satisfies $\mu_i = r$ where $r$ is the risk-free instantaneous interest rate.
-			
+	\end{align*}
+	where $\kappa, \theta, \gamma$ are strictly positive constants, with $W_i(t)$ and $Z_i(t)$ being correlated one-dimensional Brownian motions.
+    
 	In this model, the variance $\upsilon_i(t)$ of the stock $S_i(t)$ follows a stochastic process with a mean-reverting characteristic. When $\upsilon_i(t)$ is higher than its mean-reverting level $\theta_i$, the drift term in the SDE of $\upsilon_i(t)$ becomes negative. The variance then has an underlying tendency to drift back to $\theta_i$. The opposite happens when the variance $\upsilon_i(t)$ is lower than its mean-reverting level $\theta_i$. Meanwhile, the constant parameter $\kappa_i$ influences the speed with which the variance reverts to $\theta_i$. 
 	
 	When we simulate the evolution of two stocks $S_1$ and $S_2$ in the Heston model, we will need to specify in advance the constant correlation coefficients for the Brownian motions in each of the stock's SDE and its associated variance's SDE. Specifically, we will need to specify the following symmetric positive definite correlation matrix for the four Brownian motions driving the diffusion terms:
@@ -72,32 +72,34 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	\end{equation}
 	
 \section{Standard Monte Carlo for Euler-Maruyama path simulations}
-	At the current time $t_0=0$, we are concerned with the payoff of an option with the expiry time $T$. We are interested in simulating the evolution of the stocks' prices over possible paths between the time $[0,T]$. The Euler-Maruyama in path discretization starts with dividing this time interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where the notations include: $h = T/K$, $t_0=0$, $t_k=k \times h$. We start with $S_i(t_0)=S(0)$ and in order to simulate the stock price over one step from $S_i(t_k)$ to $S_i(t_{k+1})$ as well as to let its variance evolve in the Heston model, the full truncation method (\cite{andersen07}) indicates that:
+	At the current time $t_0=0$, we are concerned with the payoff of an option with the expiry time $T$. We are interested in simulating the evolution of the stocks' prices over possible paths between the time $[0,T]$. The Euler-Maruyama method in path discretization starts with dividing this time interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where the notations include: $h = T/K$, $t_0=0$, $t_k=k \times h$. We start with $S_i(t_0)=S(0)$, and in order to simulate the stock price over one step from $S_i(t_k)$ to $S_i(t_{k+1})$ as well as to let its variance evolve under the Heston model, the full truncation method (\cite{andersen07}) indicates that:
 	\begin{align}
 	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \upsilon_i(t_k)^+] h + \sqrt{\upsilon_i(t_k)^+} dW_i \} \\
 		
 	\upsilon_i(t_{k+1}) - \upsilon_i(t_k) &= \kappa_i (\theta_i - \upsilon_i(t_k)^+) h + \gamma \sqrt{\upsilon_i(t_k)^+} dZ_i(t) \\
 	
-	\upsilon_i(t_k)^+ = max(\upsilon_i(t_k),0)
+	\upsilon_i(t_k)^+ &= max[\upsilon_i(t_k), 0]
 	\end{align}
-	where the increments of the Brownian motions, $dW_i$ and $dZ_i$, are sampled from correlated normal distributions with mean equal to 0, variance equal to the size of the incremental time step $h$, and correlation equal to the specified coefficient $\rho(W_i,Z_i)$. 
+	where the increments of the Brownian motions, $dW_i$ and $dZ_i$, are sampled from correlated normal distributions with mean equal to 0, variance equal to the size of the incremental time step $h$, and correlations as specified in the correlation matrix (number xxx). 
 	
 	Under the Black-Scholes model, this path simulation simplifies to:
 	\begin{align}
 	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \sigma_i^2] h + \sigma_i dW_i \}
 	\end{align}
 	
-	Then using the above Euler-Maruyama path discretization, we can simulate one path travelled by the stock price(s) between $[0,T]$, and calculate the payoff of an European option $C(T)$ based on the terminal stock prices $S_i(T)$. For the vanilla European call option, this payoff will be $C(T)=max[S(t_K)-strike,0]$. For the European stock swap option, this payoff will be $C(T)=max[S_1(t_K)-S_2(t_K),0]$. We repeat the multi-step simulation in order to sample $N$ independent paths, and the average over these paths (after appropriate discounting) is an estimator of the price of the option at the current time $t_0=0$:
+	Using the above Euler-Maruyama path discretization, we can simulate one path travelled by the stock price(s) in the interval $[0,T]$, and calculate the payoff of an European option $C(T)$ based on the terminal stock prices $S_i(T)$ on this single path. For the vanilla European call option, this payoff will be $C(T)=max[S(t_K)-strike,0]$. For the European stock swap option, this payoff will be $C(T)=max[S_1(t_K)-S_2(t_K),0]$. We repeat the multi-step simulation in order to sample $N$ independent paths, and the average over these paths (after appropriate discounting) is an estimator of the price of the option at the current time $t_0=0$:
     \begin{equation}
     \widehat{C(0)}= D \times N^{-1} \times \sum_{i=1}^N C(\widehat{S(T)},T)
     \end{equation}
 	where $D$ represents the discount factor. For example, $D=e^{-rT}$ where $r$ is the constant risk-free rate and the stock dynamics are specified and simulated in the risk-neutral probability measure.
     
+    This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$ of the stock satisfies certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method has an expected mean square error (MSE) is asymptotically $O(N^{-1}) + O(h^2)$. 
+    
+    
+    
     According to Giles 08, provided that the drift and diffusion of the stock satisfy the global Lipschitz condition, 
+	But the Heston model does not satisfy this condition
 	
-	[Ito SDE for stock to solve and simulate one stock step]
-	[Euler for simple stock]
-	[Full truncation for Heston model]
 
 \section{Multilevel Monte Carlo for path simulations}
 
