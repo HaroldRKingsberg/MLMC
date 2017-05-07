@@ -15,7 +15,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 
 \newpage
 \section{Introduction} 
-	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo method which has computing cost of $O(\epsilon^{-3})$. For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods.
+	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo (MC) method which has computing cost of $O(\epsilon^{-3})$. For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods xxx.
 	
 	[xxx insert empirical results of the order of convergence]
 	[TBD...summary about our results and cost savings]
@@ -91,11 +91,13 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     \begin{equation}
     \widehat{C(0)}= D \times N^{-1} \times \sum_{i=1}^N C(\widehat{S(T)},T)
     \end{equation}
-	where $D$ represents the discount factor. For example, $D=e^{-rT}$ where $r$ is the constant risk-free rate and the stock dynamics are specified and simulated in the risk-neutral probability measure.
+	where $D$ represents the discount factor. For example, when the stock dynamics are specified and simulated in the risk-neutral probability measure constant risk-free rate $r$, we have $D=e^{-rT}$.
     
-    This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$ of the stock satisfies certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method has an expected mean square error (MSE) is asymptotically $O(N^{-1}) + O(h^2)$. 
+    This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$ of the stock satisfies certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method has an expected mean square error (MSE) that is asymptotically $O(N^{-1}) + O(h^2)$. 
     
+    We target a certain level of accuracy expressed by $\epsilon$, the width of the confidence interval given by the Monte Carlo estimator. Specifying $\epsilon$ is equivalent to specifying a target standard deviation of the estimator as well as confidence level such as 90% or 95%. The MSE will then be $O(\epsilon^2)$. In order to achieve this level of accuracy via standard MC simulations, we will need the number of independent paths $N \sim O(\epsilon^{-2})$ and the step size $h \sim O(\epsilon)$. Given that on each single path the MC algorithm takes $T/h$ number of steps, the total computing effort from standard MC is $O(Nh^{-1})$, or $O(\epsilon^{-3})$. 
     
+    write numerical algorithm while() for standard MC
     
     According to Giles 08, provided that the drift and diffusion of the stock satisfy the global Lipschitz condition, 
 	But the Heston model does not satisfy this condition
