@@ -19,7 +19,7 @@ def create_graph(asset):
             min_L=5
             )
 
-        (means, variances, counts) = solver.solve_option_price(asset, True)
+        (price, means, variances, counts) = solver.solve_option_price(asset, True)
         for l, (m, v, c) in enumerate(zip(means, variances, counts)):
             print(l, m, v, c)
 
@@ -48,6 +48,7 @@ def create_graph(asset):
     def plot_Npaths_for_epsilon(asset, ax3):
 
         epsilon_list = [.001, .0005, .0002, .0001]
+        epsilon_list = [.01, .005, .002, .001]
 
         for i, e in enumerate(epsilon_list):
             print("NEW TRIAL")
@@ -57,7 +58,7 @@ def create_graph(asset):
                 min_L=3
                 )
 
-            (means, variances, counts) = solver.solve_option_price(asset, True)
+            (price, means, variances, counts) = solver.solve_option_price(asset, True)
 
             for l, (m, v, c) in enumerate(zip(means, variances, counts)):
                 print(l, m, v, c)

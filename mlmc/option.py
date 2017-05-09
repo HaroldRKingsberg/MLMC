@@ -246,7 +246,8 @@ class LayeredMCOptionSolver(OptionSolver):
             means = [t.mean for t in trackers]
             variances = [t.variance for t in trackers]
             counts = [t.count for t in trackers]
-            return (means, variances, counts)
+            price = sum([t.mean for t in trackers])
+            return (price, means, variances, counts)
 
         else:
             return sum([t.mean for t in trackers])
@@ -285,8 +286,8 @@ class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
         t1, t2 = trackers[-2:]
 
         # empirical = abs(t2.mean - t1.mean/self.level_scaling_factor)
-        empirical = max(abs(t2.mean) / self.level_scaling_factor, abs(t1.mean))
-        estimated = ((self.level_scaling_factor**1 - 1) * self.max_interval_length / (2**0.5))
+        empirical = max(abs(t1.mean) / self.level_scaling_factor, abs(t2.mean))
+        estimated = ((self.level_scaling_factor - 1) * self.max_interval_length / (2**0.5))
         return estimated < empirical
 
     def run_levels(self, option, discount):
