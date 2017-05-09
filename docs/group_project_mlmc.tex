@@ -152,7 +152,16 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	
 	Given that $E[\widehat{P_L}]$ is an approximation of $E[P]$ (though with a bias), MLMC uses $\widehat{Y}$ as an estimator for $E[P]$. Our task is to estimate the variance of this estimator $V[\widehat{Y}]$, as well as the highest level $L$ and the optimal $N_l$ to use at each level in order to meet a targeted accuracy $\epsilon$.
 	
-	We implemented two MLMC algorithms for this purpose. The first algorithm is derived from \cite{giles15} and makes use of the following positive constants: $\alpha$ for the decay rate of the bias between $E[P_l]$ and $E[P]$; $\beta$ for the decay rate of the variance $V_l$ of $Y_l$; and $\gamma$ for the growth rate of the computing cost $C_l$ for the estimator $\widehat{Y_l}$ of $Y_l$ at level $l$.
+	We implemented two MLMC algorithms for this purpose. The first algorithm is detailed in \cite{giles15} and makes use of the following positive constants: $\alpha$ for the decay rate of the bias between $E[P_l]$ and $E[P]$; $\beta$ for the decay rate of $V_l$, the variance of $Y_l$; and $\gamma$ for the growth rate of the computing cost $C_l$ for the estimator $\widehat{Y_l}$ of $Y_l$ at level $l$. These positive constants are expressed in Theorem 1 of \cite{giles15} as follows:
+	\begin{align*}
+	\mid E[P_l -P] \mid &\leq c_1 2^{-\alpha l} \\
+	V_l &\leq c_2 2^{-\beta l} \\
+	C_l &\leq c_3 2^{\gamma l}
+	\end{align*}
+	
+	The theorem assumes apriori knowledge of $\alpha, \beta, \gamma$. For each specific application (with different drift, diffusion, and payoff functions), the user can derive in advance the values of these constants using analysis theories. If these constants are not provided by the user, the algorithm attempts to estimate their values via OLS regressions. At each new level, with new estimated values for $E[P_l], V_l, C_l$, the regressions are run to update the estimated $\alpha, \beta, \gamma$. The algorithm we implemented from \cite{giles15} is as follows:
+	
+	[insert algorithm 2015]
 		
 	
 	
