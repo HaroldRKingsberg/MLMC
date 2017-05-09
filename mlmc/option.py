@@ -206,7 +206,6 @@ class LayeredMCOptionSolver(OptionSolver):
         return
 
     def run_bottom_level(self, option, steps):
-        #print("RUNNING BOTTOM LEVEL")
         result = path.create_simple_path(option.assets,
                                          option.risk_free,
                                          option.expiry,
@@ -215,7 +214,6 @@ class LayeredMCOptionSolver(OptionSolver):
         return option.determine_payoff(*result),
 
     def run_upper_level(self, option, steps):
-        #print("RUNNING UPPER LEVEL")
         result = path.create_layer_path(option.assets,
                                         option.risk_free,
                                         option.expiry,
@@ -239,12 +237,20 @@ class LayeredMCOptionSolver(OptionSolver):
             for s, t in zip(fn(option, steps), trackers):
                 t.add_sample(s)
 
-    def solve_option_price(self, option):
+    def solve_option_price(self, option, return_stats=False):
         expiry = option.expiry
         risk_free = option.risk_free
         discount = math.exp(-risk_free * expiry)
+        trackers = self.run_levels(option, discount)
 
-        return self.run_levels(option, discount)
+        if return_stats:
+            means = [t.mean for t in trackers]
+            variances = [t.variance for t in trackers]
+            counts = [t.count for t in trackers]
+            return (means, variances, counts)
+
+        else:
+            return sum([t.mean for t in trackers])
 
 
 class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
@@ -254,12 +260,12 @@ class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
                  level_scaling_factor=4,
                  base_steps=1000,
                  rng_creator=None,
-                 max_L=3):
+                 min_L=3):
         self.max_interval_length = max_interval_length
         self.level_scaling_factor = max(level_scaling_factor, 2)
         self.base_steps = base_steps
         self.rng_creator = rng_creator
-        self.max_L = max_L
+        self.min_L = min_L
 
     def _determine_additional_steps(self, option, trackers):
         find_dt = lambda l:  option.expiry / (self.level_scaling_factor ** l)
@@ -279,25 +285,26 @@ class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
     def _is_error_too_high(self, trackers):
         t1, t2 = trackers[-2:]
 
-        empirical = t2.mean - t1.mean/self.level_scaling_factor
-        estimated = ((self.level_scaling_factor**2 - 1) * self.max_interval_length / (2**0.5))
+        # empirical = abs(t2.mean - t1.mean/self.level_scaling_factor)
+        empirical = max(abs(t2.mean) / self.level_scaling_factor, abs(t1.mean))
+        estimated = ((self.level_scaling_factor**1 - 1) * self.max_interval_length / (2**0.5))
         return estimated < empirical
 
     def run_levels(self, option, discount):
         trackers = [
             (self.base_steps, StatTracker(discount))
-            for _ in xrange(self.max_L)
+            for _ in xrange(self.min_L)
         ]
 
         while sum(n for n, _ in trackers) > 0:
             for L, (n, t) in enumerate(trackers):
-                print("RUNNING LEVEL %s" %L)
                 self.run_level(option, L, n, t)
 
-            for (n, t) in trackers:
-                print(n, t.mean, t.stdev, t.count)
-            addl_steps = self._determine_additional_steps(option,
-                                                          [x[1] for x in trackers])
+
+            addl_steps = self._determine_additional_steps(
+                option,
+                [x[1] for x in trackers]
+                )
 
             nt = []
             for L, (addl, (n, t)) in enumerate(zip(addl_steps, trackers)):
@@ -307,10 +314,9 @@ class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
             trackers = nt
 
             if self._is_error_too_high([x[1] for x in trackers]):
-                print("ADDING TRACKER")
                 trackers.append((self.base_steps, StatTracker(discount)))
 
-        return trackers
+        return [t[1] for t in trackers]
 
 
 class HeuristicLayeredMCOptionSolver(LayeredMCOptionSolver):
