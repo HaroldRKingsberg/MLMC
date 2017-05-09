@@ -181,7 +181,6 @@ class NaiveMCOptionSolver(OptionSolver):
                                              self.rng_creator)
             payoff = option.determine_payoff(*result)
             stat_tracker.add_sample(payoff)
-            p
         return stat_tracker
 
     def solve_option_price(self, option, return_stats=False):
