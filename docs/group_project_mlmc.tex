@@ -37,15 +37,17 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 
 \newpage
 \section{Introduction} 
-	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo (MC) method which has computing cost of $O(\epsilon^{-3})$. For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods xxx.
+	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo (MC) method which has computing cost of $O(\epsilon^{-3})$. For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods.
 	
 	[xxx insert empirical results of the order of convergence]
 	[TBD...summary about our results and cost savings]
 	
-	Section 2 below describes the specifications of a European stock exchange option, as well as the Heston model for the evolutions of a stock's price and its stochastic volatility. Section 3 outlines the Euler-Maruyama method in discretizing the paths of a stock's price and volatility, followed by section 4 on the standard Monte Carlo method to simulate these paths. Section 5 then describes the MLMC algorithm [TBD...]
+	Section 2 below describes the specifications of a European stock exchange option, as well as the Heston model for the evolutions of a stock's price and its stochastic volatility. Section 3 outlines the Euler-Maruyama method in discretizing the paths of a stock's price and volatility, followed by section 4 on the standard Monte Carlo method to simulate these paths. Section 5 then describes the MLMC algorithm 
+	
+	[xxxTBD...]
 
 \section{Heston Model and the European Exchange Option}
-	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option at time T is: $C(T)=max[0, S_1(T)-S_2(T)]$. The aim of our project is to employ Monte Carlo simulation to estimate the price of this European exchange option at time $t_0=0$ under the Heston stochastic volatility model.
+	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option $P$ at time T is: $P(T)=max[0, S_1(T)-S_2(T)]$. The aim of our project is to employ Monte Carlo simulation to estimate the price of this European exchange option at time $t_0=0$ under the Heston stochastic volatility model.
     
     Before discussing the Heston model, we discuss the standard Black-Scholes assumptions, under which this exchange option can be priced using the Margrabe's formula given by \cite{margrabe78}. The Black-Scholes assumptions are that the stocks $S_1$ and $S_2$ have continuous dividend yield $q_1$ and $q_2$, respectively, and that their prices evolve based on the stochastic differential equation (SDE) with constant volatility as follows:
 	\begin{align*}
@@ -67,7 +69,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	d\upsilon_i(t) &= \kappa_i (\theta_i - \upsilon_i(t)) dt + \gamma \sqrt{\upsilon_i(t)} dZ_i(t) \\
 	dW_i(t) \times dZ_i(t) &= \rho_i dt
 	\end{align*}
-	where $\kappa, \theta, \gamma$ are strictly positive constants, with $W_i(t)$ and $Z_i(t)$ being correlated one-dimensional Brownian motions.
+	where $\kappa_i, \theta_i, \gamma_i$ are strictly positive constants, with $W_i(t)$ and $Z_i(t)$ being correlated one-dimensional Brownian motions.
     
 	In this model, the variance $\upsilon_i(t)$ of the stock $S_i(t)$ follows a stochastic process with a mean-reverting characteristic. When $\upsilon_i(t)$ is higher than its mean-reverting level $\theta_i$, the drift term in the SDE of $\upsilon_i(t)$ becomes negative. The variance then has an underlying tendency to drift back to $\theta_i$. The opposite happens when the variance $\upsilon_i(t)$ is lower than its mean-reverting level $\theta_i$. Meanwhile, the constant parameter $\kappa_i$ influences the speed with which the variance reverts to $\theta_i$. 
 	
@@ -91,8 +93,8 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	
 \section{Standard Monte Carlo for Euler-Maruyama Path Simulations}
 	At the current time $t_0=0$, we are concerned with the payoff of an option with the expiry time $T$. We are interested in simulating the evolution of the stocks' prices over possible paths between the time $[0,T]$. The Euler-Maruyama method in path discretization starts with dividing this time interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where the notations include: $h = T/K$, $t_0=0$, $t_k=k \times h$. We start with $S_i(t_0)=S(0)$, and in order to simulate the stock price over one step from $S_i(t_k)$ to $S_i(t_{k+1})$ as well as to let its variance evolve under the Heston model, the full truncation method (\cite{andersen07}) indicates that:
-	\begin{align}
-	S_i(t_{k+1}) &= S_i(t_k) \times exp\{[\mu_i - \frac{1}{2} \upsilon_i(t_k)^+] h + \sqrt{\upsilon_i(t_k)^+} dW_i \} \\
+	\begin{align}	
+	S_i(t_{k+1}) - S_i(t_k) &= \mu_i S_i(t_k) h + \sqrt{\upsilon_i(t_k)^+} S_i(t_k) dW_i \\
 	\upsilon_i(t_{k+1}) - \upsilon_i(t_k) &= \kappa_i (\theta_i - \upsilon_i(t_k)^+) h + \gamma \sqrt{\upsilon_i(t_k)^+} dZ_i(t) \\
 	\upsilon_i(t_k)^+ &= max[\upsilon_i(t_k), 0]
 	\end{align}
@@ -100,18 +102,25 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	
 	Under the Black-Scholes model, this path simulation simplifies to:
 	\begin{equation}
-	S_i(t_{k+1}) = S_i(t_k) \times exp[(\mu_i - \frac{1}{2} \sigma_i^2) h + \sigma_i dW_i]
+	S_i(t_{k+1}) - S_i(t_k) &= \mu_i S_i(t_k) h + \sigma_i S_i(t_k) dW_i
 	\end{equation}
 	
-	Using the above Euler-Maruyama path discretization, we can simulate one path travelled by the stock price(s) in the interval $[0,T]$, and calculate the payoff of an European option $C(T)$ based on the terminal stock prices $S_i(T)$ on this single path. For the vanilla European call option, this payoff will be $C(T)=max[S(t_K)-strike,0]$. For the European stock swap option, this payoff will be $C(T)=max[S_1(t_K)-S_2(t_K),0]$. We repeat the multi-step simulation in order to sample $N$ independent paths, and the average over these paths (after appropriate discounting) is an estimator of the price of the option at the current time $t_0=0$:
+	Using the above Euler-Maruyama path discretization, we can simulate one path travelled by the stock price(s) in the interval $[0,T]$, and calculate the payoff $P$ of an European option $P=C(T)$ based on the terminal stock prices $S_i(T)$ on this single path. For the vanilla European call option, this payoff will be $P(T)=max[S(t_K)-strike,0]$. For the European stock swap option, this payoff will be $P(T)=max[S_1(t_K)-S_2(t_K),0]$. We repeat the multi-step simulation in order to sample $N$ independent paths, and the average over these paths (after appropriate discounting) is an estimator of the price of the option at the current time $t_0=0$:
     \begin{equation}
-    \widehat{C(0)} = D \times N^{-1} \times \sum_{i=1}^N C(\widehat{S(T)},T)
+    \widehat{C(0)} = D \times N^{-1} \times \sum_{i=1}^N P(\widehat{S(T)},T)
     \end{equation}
 	where $D$ represents the discount factor. For example, when the stock dynamics are specified and simulated in the risk-neutral probability measure constant risk-free rate $r$, we have $D=e^{-rT}$.
     
-    This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$ of the stock satisfies certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method has an expected mean square error (MSE) that is asymptotically $O(N^{-1}) + O(h^2)$. 
-    [xxx elaborate on discretization error and statistical error]    
+    This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the stock's drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$, and the option's payoff function $P=P(S(T))$, satisfy certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method for Euler-Maruyama paths has an expected mean square error (MSE) that is asymptotically $O(N^{-1}) + O(h^2)$. 
     
+	We can further examine the error by separating it into a discretization error and a statistical error. Closely following \cite{giles08}, we denote $P=P(S(T))$ as the payoff based on $S(T)$, whose expectation $E[P]$ is the quantity we are interested in estimating. In practice, we cannot simulate $S(T)$ and $P$, but instead rely on simulating small incremental time steps of size $h$ each. Let $\widehat{S(t)}$ be the approximation of $S(t)$ via simulating with time step $h$, and \widehat{P_h} be the associated approximation of $P$, where the subscript $h$ is to emphasize the step size. Provided that conditions on $\mu(\cdot)$ and $\sigma(\cdot)$ are met, the orders of convergence of Euler-Maruyama are expressed as follows \cite{higham15}:
+	\begin{align*}
+	\sup_{0 \leq t_k \leq T} (E[\widehat{S(t_k)}] - E[S(t_k)]) &= O(h) \\
+	E[\sup_{0 \leq t_k \leq T}\mid \widehat{S(t_k)} - S(t_k)\mid ] &= O(h^{\frac{1}{2}})
+	\end{align*}
+    
+	When we simulate $N$ independent paths, we are making an estimator of $E[\widehat{P}_h]$ instead of $E[P]$. Our estimator has a bias stemmed from the step size $h$, and the bias is $E[\widehat{P_h}] - E[P] = O(h)$, provided conditions are met (\cite{higham15}). This bias is a discretization error that is generally not influenced by $N$. Our second source of error is statistical and it depends on how many samples $N$ we generate to estimate $E[\widehat{P}_h]$. The statistical error is described by a confidence interval width $O(N^{-\frac{1}{2}})$, or variance $O(N^{-1}$.
+	
     We target a certain level of accuracy expressed by $\epsilon$, the width of the confidence interval given by the Monte Carlo estimator. Specifying $\epsilon$ is equivalent to specifying a target standard deviation of the estimator as well as confidence level such as 90\% or 95\%. The MSE will then be $O(\epsilon^2)$. In order to achieve this level of accuracy via standard MC simulations, we will need the number of independent paths $N \sim O(\epsilon^{-2})$ and the step size $h \sim O(\epsilon)$. Given that on each single path the MC algorithm takes $T/h$ number of steps, the total computing effort from standard MC is $O(Nh^{-1})$, or $O(\epsilon^{-3})$. 
     
     For our group project, we implemented the following standard MC algorithm (for illustration and comparison with MLMC):
@@ -134,11 +143,8 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 
 \section{Multilevel Monte Carlo for Path Simulations}
 	Developing on the standard Monte Carlo method above, the MLMC method for path simulations, when applied to Euler-Maruyama discretization, starts by simulating a high number of independent paths, whereby on each path, the step size is large. This represents the initial coarser levels of MLMC. The algorithm then proceeds to finer levels where there are fewer independent paths run on smaller step sizes. The overall MLMC estimator is the sum of the sample average from the coarsest level $l=0$, together with the refinements made from subsequent higher levels.
-	Closely following \cite{giles08}, we denote $P=P(S(T))$ as the payoff based on $S(T)$, whose expectation $E[P]$ is the quantity we are interested in estimating. Let $\widehat{P_l}$ be the approximation of $P$ using \textit{one single path} only, with the step size $h_l$ corresponding to the MLMC level $l$ ($l=0,1,2,...L$, with $L$ being the finest level). We note that $E[\widehat{P_l}] \neq E[P]$, the difference between them being the discretization error, or the bias from using $E[\widehat{P_l}]$ to approximate $E[P]$. In general, the discretization error of $E[\widehat{P_l}]$ depends most on the step size $h_l$ (instead of on the number of independent paths generated). Existing theorems indicate that Euler-Maruyama discretization has weak convergence of order one and strong convergence of order one half, provided that the drift function $\mu(\cdot)$ and the diffusion function $\sigma(\cdot)$, as well as the payoff function $\P(\cdot)$ satisfy certain conditions (\cite{kloeden99}). The orders of convergence of Euler-Maruyama are expressed as follows \cite{higham16}:
-	\begin{align*}
-	\sup_{0 \leq t_k \leq T} (E[\widehat{S(t_k)}] - E[S(t_k)]) = O(h) \\
-	E[\sup_{0 \leq t_k \leq T}\mid \widehat{S(t_k)} - S(t_k)\mid ] = O(h^{\frac{1}{2}})	
-	\end{align*}
+	
+	Following notations from \cite{giles08}, let $\widehat{P_l}$ be the approximation of $P$ using \textit{one single path} only with the step size $h_l$ corresponding to the MLMC level $l$ ($l=0,1,2,...L$, with $L$ being the finest level). We note that $E[\widehat{P_l}] \neq E[P]$, the difference between them being the discretization error, or the bias from using $E[\widehat{P_l}]$ to approximate $E[P]$. In general, the discretization error of $E[\widehat{P_l}]$ depends most on the step size $h_l$ (instead of on the number of independent paths generated). Existing theorems indicate that Euler-Maruyama discretization has weak convergence of order one and strong convergence of order one half, provided that the drift function $\mu(\cdot)$ and the diffusion function $\sigma(\cdot)$, as well as the payoff function $\P(\cdot)$ satisfy certain conditions (\cite{kloeden99}). 
 	
 	Provided that these conditions are met, then $E[\widehat{P_l} - P] = O(h_l)$ as $l\rightarrow \infty$. Our goal is use to $E[\widehat{P_L}]$ as the approximation (though biased) of $E[P]$. 
 	
