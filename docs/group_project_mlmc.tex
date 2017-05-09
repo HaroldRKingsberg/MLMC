@@ -113,7 +113,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     
     This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the stock's drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$, and the option's payoff function $P=P(S(T))$, satisfy certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method for Euler-Maruyama paths has an expected mean square error (MSE) that is asymptotically $O(N^{-1}) + O(h^2)$. 
     
-	We can further examine the error by separating it into a discretization error and a statistical error. Closely following \cite{giles08}, we denote $P=P(S(T))$ as the payoff based on $S(T)$, whose expectation $E[P]$ is the quantity we are interested in estimating. In practice, we cannot simulate $S(T)$ and $P$, but instead rely on simulating small incremental time steps of size $h$ each. Let $\widehat{S(t)}$ be the approximation of $S(t)$ via simulating with time step $h$, and \widehat{P_h} be the associated approximation of $P$, where the subscript $h$ is to emphasize the step size. Provided that conditions on $\mu(\cdot)$ and $\sigma(\cdot)$ are met, the orders of convergence of Euler-Maruyama are expressed as follows \cite{higham15}:
+	We can further examine the error by separating it into a discretization error and a statistical error. Closely following \cite{giles08}, we denote $P=P(S(T))$ as the payoff based on $S(T)$, whose expectation $E[P]$ is the quantity we are interested in estimating. In practice, we cannot simulate $S(T)$ and $P$, but instead rely on simulating small incremental time steps of size $h$ each. Let $\widehat{S(t)}$ be the approximation of $S(t)$ via simulating with time step $h$, and \widehat{P_h} be the associated approximation of $P$, where the subscript $h$ is to emphasize the step size. Provided that conditions on $\mu(\cdot)$ and $\sigma(\cdot)$ are met, the orders of convergence of Euler-Maruyama are expressed as in \cite{higham15}:
 	\begin{align*}
 	\sup_{0 \leq t_k \leq T} (E[\widehat{S(t_k)}] - E[S(t_k)]) &= O(h) \\
 	E[\sup_{0 \leq t_k \leq T}\mid \widehat{S(t_k)} - S(t_k)\mid ] &= O(h^{\frac{1}{2}})
@@ -125,11 +125,12 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     
     For our group project, we implemented the following standard MC algorithm (for illustration and comparison with MLMC):
     \begin{lstlisting}
+	target_std_error, confidence_level = get_user_input()
     if (num_steps is not provided):
         num_steps_per_path = T / epsilon
     stat_tracker = new empty statistics tracker of simulated payoffs
     stat_tracker.set(appropriate discount factor)
-    while (std error given by stat_tracker > target std error):
+    while (std error given by stat_tracker > target_std_error):
         path = new simulated path
         payoff = calculate payoff(path)
         stat_tracker.add(payoff)
@@ -144,15 +145,13 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 \section{Multilevel Monte Carlo for Path Simulations}
 	Developing on the standard Monte Carlo method above, the MLMC method for path simulations, when applied to Euler-Maruyama discretization, starts by simulating a high number of independent paths, whereby on each path, the step size is large. This represents the initial coarser levels of MLMC. The algorithm then proceeds to finer levels where there are fewer independent paths run on smaller step sizes. The overall MLMC estimator is the sum of the sample average from the coarsest level $l=0$, together with the refinements made from subsequent higher levels.
 	
-	Following notations from \cite{giles08}, let $\widehat{P_l}$ be the approximation of $P$ using \textit{one single path} only with the step size $h_l$ corresponding to the MLMC level $l$ ($l=0,1,2,...L$, with $L$ being the finest level). We note that $E[\widehat{P_l}] \neq E[P]$, the difference between them being the discretization error, or the bias from using $E[\widehat{P_l}]$ to approximate $E[P]$. In general, the discretization error of $E[\widehat{P_l}]$ depends most on the step size $h_l$ (instead of on the number of independent paths generated). Existing theorems indicate that Euler-Maruyama discretization has weak convergence of order one and strong convergence of order one half, provided that the drift function $\mu(\cdot)$ and the diffusion function $\sigma(\cdot)$, as well as the payoff function $\P(\cdot)$ satisfy certain conditions (\cite{kloeden99}). 
+	Following notations from \cite{giles08}, let $\widehat{P_l}$ be the approximation of $P$ using \textit{one single path} only with the step size $h_l$ corresponding to the MLMC level $l$ (for $l=0,1,2,...L$, with $L$ being the finest level). We note that there is a bias as $E[\widehat{P_l}] \neq E[P]$, the difference between these quantities being the discretization error, or the bias from using $E[\widehat{P_l}]$ to approximate $E[P]$. In general, the discretization error of $E[\widehat{P_l}]$ depends most on the step size $h_l$ (instead of on the number of independent paths generated). Provided that  conditions on $\mu(\cdot)$, $\sigma(\cdot)$, and $P(\cdot)$ are met, then $E[\widehat{P_l} - P] = O(h_l)$ as $l\rightarrow \infty$. Our goal is to use $E[\widehat{P_L}]$ as the approximation (though biased) of $E[P]$, and thus we make an estimator of $E[\widehat{P_L}]$.
 	
-	Provided that these conditions are met, then $E[\widehat{P_l} - P] = O(h_l)$ as $l\rightarrow \infty$. Our goal is use to $E[\widehat{P_L}]$ as the approximation (though biased) of $E[P]$. 
+	The MLMC method does not directly estimate $E[\widehat{P_L}]$ using step size $h_L$ of the finest level. Instead it first writes $E[\widehat{P_L}] = E[\widehat{P_0}] + \sum_{l=1}^L E[\widehat{P_l} - \widehat{P_{l-1}}]$. The method then uses $N_l$ independent paths to make an estimator $\widehat{Y_l}$ for $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$. Also $Y_0 = E[\widehat{P_0}]$ is estimated using $N_0$ paths. The overall MLMC estimator for $E[\widehat{P_L}]$ is then
+	$$\widehat{Y} = \sum_{l=0}^L \widehat{Y_l}$$
+	Given that $E[\widehat{P_L}]$ is an approximation of $E[P]$ (with a bias), MLMC uses $\widehat{Y}$ as an estimator for $E[P]$. Our task is to estimate the variance of this estimator $V[\widehat{Y}]$, as well as the highest level $L$ and the optimal $N_l$ to use at each level in order to meet a targeted accuracy $\epsilon$.
+		
 	
-
-	
-	
-	Note that E(PL) is not E(P) there is a bias however by increasing L the biasedness is reduced and E(PL) is closer to E(P). We estimate E(PL) by samples and paths.
-	Discretization from step size and statistical errors from paths
 	
 \section{Empirical Results}
 
