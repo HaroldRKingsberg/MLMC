@@ -113,13 +113,13 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     
     This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the stock's drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$, and the option's payoff function $P=P(S(T))$, satisfy certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method for Euler-Maruyama paths has an expected mean square error (MSE) that is asymptotically $O(N^{-1}) + O(h^2)$. 
     
-	We can further examine the error by separating it into a discretization error and a statistical error. Closely following \cite{giles08}, we denote $P=P(S(T))$ as the payoff based on $S(T)$, whose expectation $E[P]$ is the quantity we are interested in estimating. In practice, we cannot simulate $S(T)$ and $P$, but instead rely on simulating small incremental time steps of size $h$ each. Let $\widehat{S(t)}$ be the approximation of $S(t)$ via simulating with time step $h$, and \widehat{P_h} be the associated approximation of $P$, where the subscript $h$ is to emphasize the step size. Provided that conditions on $\mu(\cdot)$ and $\sigma(\cdot)$ are met, the orders of convergence of Euler-Maruyama are expressed as in \cite{higham15}:
+	We can further examine the error by separating it into a discretization error and a statistical error. Closely following \cite{giles08}, we denote $P=P(S(T))$ as the payoff based on $S(T)$, whose expectation $E[P]$ is the quantity we are interested in estimating. In practice, we cannot simulate $S(T)$ and $P$, but instead rely on simulating small incremental time steps of size $h$ each. Let $\widehat{S(t)}$ be the approximation of $S(t)$ via simulating with time step $h$, and $\widehat{P_h}$ be the associated approximation of $P$, where the subscript $h$ is to emphasize the step size. Provided that conditions on $\mu(\cdot)$ and $\sigma(\cdot)$ are met, the orders of convergence of Euler-Maruyama are expressed as in \cite{higham15}:
 	\begin{align*}
 	\sup_{0 \leq t_k \leq T} (E[\widehat{S(t_k)}] - E[S(t_k)]) &= O(h) \\
 	E[\sup_{0 \leq t_k \leq T}\mid \widehat{S(t_k)} - S(t_k)\mid ] &= O(h^{\frac{1}{2}})
 	\end{align*}
     
-	When we simulate $N$ independent paths, we are making an estimator of $E[\widehat{P}_h]$ instead of $E[P]$. Our estimator has a bias stemmed from the step size $h$, and the bias is $E[\widehat{P_h}] - E[P] = O(h)$, provided conditions are met (\cite{higham15}). This bias is a discretization error that is generally not influenced by $N$. Our second source of error is statistical and it depends on how many samples $N$ we generate to estimate $E[\widehat{P}_h]$. The statistical error is described by a confidence interval width $O(N^{-\frac{1}{2}})$, or variance $O(N^{-1}$.
+	When we simulate $N$ independent paths, we are making an estimator of $E[\widehat{P}_h]$ instead of $E[P]$. Our estimator has a bias stemmed from the step size $h$, and the bias is $E[\widehat{P_h}] - E[P] = O(h)$, provided conditions are met (\cite{higham15}). This bias is a discretization error that is generally not influenced by $N$. Our second source of error is statistical and it depends on how many samples $N$ we generate to estimate $E[\widehat{P}_h]$. The statistical error is described by a confidence interval width $O(N^{-\frac{1}{2}})$, or variance $O(N^{-1})$.
 	
     We target a certain level of accuracy expressed by $\epsilon$, the width of the confidence interval given by the Monte Carlo estimator. Specifying $\epsilon$ is equivalent to specifying a target standard deviation of the estimator as well as confidence level such as 90\% or 95\%. The MSE will then be $O(\epsilon^2)$. In order to achieve this level of accuracy via standard MC simulations, we will need the number of independent paths $N \sim O(\epsilon^{-2})$ and the step size $h \sim O(\epsilon)$. Given that on each single path the MC algorithm takes $T/h$ number of steps, the total computing effort from standard MC is $O(Nh^{-1})$, or $O(\epsilon^{-3})$. 
     
@@ -140,7 +140,9 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     return std_MC_estimator, std_MC_sample_error
     \end{lstlisting}
     
-    According to \cite{giles08}, the stochastic volatility function $\sigma(\cdot)$ under the Heston model does not satisfy the global Lipschitz condition, and as a result, there is no theoretical guarantee that with simulating the number of independent paths $N \sim O(\epsilon^{-2})$ and step size $h \sim O(\epsilon)$, the MSE will be $O(\epsilon^2)$. In our empirical results from the algorithm above, the number of paths $N$ is increased until the empirical standard error decreases below the targeted standard deviation. [xxx we will graph to show results of N on yaxis and targeted stdev on xaxis, for Heston vanilla stock, to see if N is O(square)]	
+    According to \cite{giles08}, the stochastic volatility function $\sigma(\cdot)$ under the Heston model does not satisfy the global Lipschitz condition, and as a result, there is no theoretical guarantee that with simulating the number of independent paths $N \sim O(\epsilon^{-2})$ and step size $h \sim O(\epsilon)$, the MSE will be $O(\epsilon^2)$. In our empirical results from the algorithm above, the number of paths $N$ is increased until the empirical standard error decreases below the targeted standard deviation. 
+    
+    [xxx we will graph to show results of N on yaxis and targeted stdev on xaxis, for Heston vanilla stock, to see if N is O(square)]	
 
 \section{Multilevel Monte Carlo for Path Simulations}
 	Developing on the standard Monte Carlo method above, the MLMC method for path simulations, when applied to Euler-Maruyama discretization, starts by simulating a high number of independent paths, whereby on each path, the step size is large. This represents the initial coarser levels of MLMC. The algorithm then proceeds to finer levels where there are fewer independent paths run on smaller step sizes. The overall MLMC estimator is the sum of the sample average from the coarsest level $l=0$, together with the refinements made from subsequent higher levels.
@@ -159,9 +161,27 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	C_l &\leq c_3 2^{\gamma l}
 	\end{align*}
 	
-	The theorem assumes apriori knowledge of $\alpha, \beta, \gamma$. For each specific application (with different drift, diffusion, and payoff functions), the user can derive in advance the values of these constants using analysis theories. If these constants are not provided by the user, the algorithm attempts to estimate their values via OLS regressions. At each new level, with new estimated values for $E[P_l], V_l, C_l$, the regressions are run to update the estimated $\alpha, \beta, \gamma$. The algorithm we implemented from \cite{giles15} is as follows:
+	The algorithm assumes existence and apriori knowledge of $\alpha, \beta, \gamma$. For each specific application (with different drift, diffusion, and payoff functions), the user can derive in advance the values of these constants using analysis theories. If these constants are not provided by the user, the algorithm attempts to estimate their values via OLS regressions. At each new level, with new estimated values for $E[P_l], V_l, C_l$, the regressions are run to update the estimated $\alpha, \beta, \gamma$. The first algorithm that we implemented from \cite{giles15} is as follows:
+	\begin{lstlisting}
+	target_std_error, confidence_level = get_user_input()
+	initial_N = 10000
 	
+    if (num_steps is not provided):
+        num_steps_per_path = T / epsilon
+    stat_tracker = new empty statistics tracker of simulated payoffs
+    stat_tracker.set(appropriate discount factor)
+    while (std error given by stat_tracker > target_std_error):
+        path = new simulated path
+        payoff = calculate payoff(path)
+        stat_tracker.add(payoff)
+        update stat_tracker.mean, stat_tracker.stdev
+    std_MC_estimator = stat_tracker.mean
+    std_MC_sample_error = stat_tracker.stdev
+    return std_MC_estimator, std_MC_sample_error
+    \end{lstlisting}
+    
 	[insert algorithm 2015]
+	[not guarantee for Heston; we show results later]
 		
 	
 	
