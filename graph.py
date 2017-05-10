@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-def create_graph(asset):
+def create_graph(asset, filename):
 
     def plot_vars_and_means(asset, ax1, ax2):
         '''
@@ -48,8 +48,15 @@ def create_graph(asset):
     def plot_Npaths_for_epsilon(asset, ax3):
 
         epsilon_list = [.001, .0005, .0002, .0001]
-        epsilon_list = [.01, .005, .002, .001]
+        #epsilon_list = [.01, .005, .002, .001]
 
+        def calc_comp_cost(counts, level_scaling_factor=4):
+            C = counts[0]
+            for l in range(1, len(counts)):
+                C += counts[l]*(level_scaling_factor**l + level_scaling_factor**(l-1))
+            return C
+
+        cost_list = []
         for i, e in enumerate(epsilon_list):
             print("NEW TRIAL")
             solver = option.SimpleLayeredMCOptionSolver(
@@ -62,34 +69,76 @@ def create_graph(asset):
 
             for l, (m, v, c) in enumerate(zip(means, variances, counts)):
                 print(l, m, v, c)
-
+            cost_list.append(calc_comp_cost(counts))
             layers = [i for i in range(len(counts))]
             ax3.plot(layers, counts, ls="--",marker='x',label="e = %s" %e)
+
         ax3.set_yscale('log')
-        ax3.set_xlabel("N_l")
-        ax3.set_ylabel("l")
+        ax3.set_xlabel("l")
+        ax3.set_ylabel("N_l")
         ax3.legend(loc='upper right')
+        ax4.plot(epsilon_list, cost_list, marker='x', label='MLMC')
+        ax4.set_xlabel("epsilon")
+        ax4.set_ylabel("Cost (total MC steps)")
+        ax4.legend(loc='upper right')
 
 
     fig, ((ax1, ax2), (ax3,ax4)) = plt.subplots(2,2)
     plot_vars_and_means(asset, ax1, ax2)
     plot_Npaths_for_epsilon(asset, ax3)
     plt.tight_layout()
-    plt.savefig(os.getcwd()+"/figs/graph_1.png")
-    plt.show()
+    plt.savefig(filename)
+    #plt.show()
 
 def main():
-    spot = 1
+    #params for constant vol stock 1
+    spot_1 = 1
+    vol_1 = 0.2
+
+    #params for constant vol stock 2
+    spot_2 = .8
+    vol_2 = .3
+
+    #params for heston vol stock 1
+    spot_3 = 1
+    vol_3 = .2
+    kappa_3 = .1
+    theta_3 = .05
+    gamma_3 = .03
+
+    #params for heston vol stock 2
+    spot_4 = .8
+    vol_4 = .3
+    kappa_4 = .08
+    theta_4 = .06
+    gamma_4 = .04
+
+    #params for options
     strike = 1
     risk_free = 0.05
     expiry = 1
-    vol = 0.2
 
+    cvs_1 = stock.ConstantVolatilityStock(spot_1, vol_1)
+    cvs_2 = stock.ConstantVolatilityStock(spot_2, vol_2)
 
+    hvs_1 = stock.VariableVolatilityStock(spot_3, vol_3, kappa_3, theta_3, theta_3)
+    hvs_2 = stock.VariableVolatilityStock(spot_4, vol_4, kappa_4, theta_4, theta_4)
 
-    s = stock.ConstantVolatilityStock(spot, vol)
-    o = option.EuropeanStockOption(s, risk_free, expiry, True, strike)
-    create_graph(o)
+    o1 = option.EuropeanStockOption(cvs_1, risk_free, expiry, True, strike)
+
+    o2 = option.EuropeanSwaption([cvs_1, cvs_2], risk_free, expiry, True)
+
+    o3 = option.EuropeanSwaption([hvs_1, hvs_2], risk_free, expiry, True)
+
+    ROOT_DIR = os.getcwd()
+    filename = ROOT_DIR+"/figs/constant_vol_call.png"
+    create_graph(o1, filename)
+
+    filename = ROOT_DIR+"/figs/constant_vol_exchange.png"
+    create_graph(o2, filename)
+
+    filename = ROOT_DIR+"/figs/heston_vol_exchange.png"
+    create_graph(o3, filename)
 
 if __name__ == '__main__':
     main()

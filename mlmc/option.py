@@ -426,4 +426,4 @@ class HeuristicLayeredMCOptionSolver(LayeredMCOptionSolver):
                     guess_n = 2 * term * base / (self.target_mse**2)
                     trackers.append((guess_n, StatTracker(discount), StatTracker(1)))
 
-        return sum(p.mean for _, p, _ in trackers)
+        return [p for _, p, _ in trackers]
