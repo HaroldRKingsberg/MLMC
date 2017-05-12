@@ -126,10 +126,10 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     For our group project, we implemented the following standard MC algorithm (for illustration and comparison with MLMC):
     \begin{lstlisting}
 	target_std_error, confidence_level = get_user_input()
-    if (num_steps is not provided):
+    if (user_provided_num_steps is None):
         num_steps_per_path = T / epsilon
     stat_tracker = new empty statistics tracker of simulated payoffs
-    stat_tracker.set(appropriate discount factor)
+    stat_tracker.assign(appropriate discount factor)
     while (std error given by stat_tracker > target_std_error):
         path = new simulated path
         payoff = calculate payoff(path)
@@ -140,7 +140,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     return std_MC_estimator, std_MC_sample_error
     \end{lstlisting}
     
-    According to \cite{giles08}, the stochastic volatility function $\sigma(\cdot)$ under the Heston model does not satisfy the global Lipschitz condition, and as a result, there is no theoretical guarantee that with simulating the number of independent paths $N \sim O(\epsilon^{-2})$ and step size $h \sim O(\epsilon)$, the MSE will be $O(\epsilon^2)$. In our empirical results from the algorithm above, the number of paths $N$ is increased until the empirical standard error decreases below the targeted standard deviation. 
+    According to \cite{giles08}, the stochastic volatility function $\sigma(\cdot)$ under the Heston model does not satisfy the global Lipschitz condition, and as a result, there is no theoretical guarantee that with simulating the number of independent paths $N \sim O(\epsilon^{-2})$ and step size $h \sim O(\epsilon)$, the MSE will be $O(\epsilon^2)$. In our algorithm above, the number of paths $N$ is increased until the empirical standard error decreases below the targeted standard deviation. 
     
     [xxx we will graph to show results of N on yaxis and targeted stdev on xaxis, for Heston vanilla stock, to see if N is O(square)]	
 
@@ -148,37 +148,62 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	Developing on the standard Monte Carlo method above, the MLMC method for path simulations, when applied to Euler-Maruyama discretization, starts by simulating a high number of independent paths, whereby on each path, the step size is large. This represents the initial coarser levels of MLMC. The algorithm then proceeds to finer levels where there are fewer independent paths run on smaller step sizes. The overall MLMC estimator is the sum of the sample average from the coarsest level $l=0$, together with the refinements made from subsequent higher levels.
 	
 	Following notations from \cite{giles08}, let $\widehat{P_l}$ be the approximation of $P$ using \textit{one single path} only with the step size $h_l$ corresponding to the MLMC level $l$ (for $l=0,1,2,...L$, with $L$ being the finest level). We note that there is a bias as $E[\widehat{P_l}] \neq E[P]$, the difference between these quantities being the discretization error, or the bias from using $E[\widehat{P_l}]$ to approximate $E[P]$. In general, the discretization error of $E[\widehat{P_l}]$ depends most on the step size $h_l$ (instead of on the number of independent paths generated). Provided that  conditions on $\mu(\cdot)$, $\sigma(\cdot)$, and $P(\cdot)$ are met, then $E[\widehat{P_l} - P] = O(h_l)$ as $l\rightarrow \infty$. Our goal is to use $E[\widehat{P_L}]$ as the approximation (though biased) of $E[P]$, and thus we make an estimator of $E[\widehat{P_L}]$.
-	
-	The MLMC method does not directly estimate $E[\widehat{P_L}]$ using step size $h_L$ at the finest level. Instead it first writes $E[\widehat{P_L}] = E[\widehat{P_0}] + \sum_{l=1}^L E[\widehat{P_l} - \widehat{P_{l-1}}]$. The method then uses $N_l$ independent paths to make an estimator $\widehat{Y_l}$ for $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$. Also $Y_0 = E[\widehat{P_0}]$ is estimated using $N_0$ paths. The overall MLMC estimator for $E[\widehat{P_L}]$ is then
+		
+    The MLMC method does not directly estimate $E[\widehat{P_L}]$ using step size $h_L$ at the finest level. Instead it first writes $E[\widehat{P_L}] = E[\widehat{P_0}] + \sum_{l=1}^L E[\widehat{P_l} - \widehat{P_{l-1}}]$. The method then uses $N_l$ independent paths to make an estimator $\widehat{Y_l}$ for $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$. Also, the quantity $Y_0 = E[\widehat{P_0}]$ is estimated using $N_0$ paths, a fixed input (such as $N_0=10,000$). The overall MLMC estimator for $E[\widehat{P_L}]$ is then:
 	$$\widehat{Y} = \sum_{l=0}^L \widehat{Y_l}$$
 	
 	Given that $E[\widehat{P_L}]$ is an approximation of $E[P]$ (though with a bias), MLMC uses $\widehat{Y}$ as an estimator for $E[P]$. Our task is to estimate the variance of this estimator $V[\widehat{Y}]$, as well as the highest level $L$ and the optimal $N_l$ to use at each level in order to meet a targeted accuracy $\epsilon$.
 	
-	We implemented two MLMC algorithms for this purpose. The first algorithm is detailed in \cite{giles15} and makes use of the following positive constants: $\alpha$ for the decay rate of the bias between $E[P_l]$ and $E[P]$; $\beta$ for the decay rate of $V_l$, the variance of $Y_l$; and $\gamma$ for the growth rate of the computing cost $C_l$ for the estimator $\widehat{Y_l}$ of $Y_l$ at level $l$. These positive constants are expressed in Theorem 1 of \cite{giles15} as follows:
+	We implemented two MLMC algorithms for this purpose. The first algorithm is detailed in \cite{giles15} and makes use of the following positive constants: $\alpha$ for the decay rate of the bias between $E[P_l]$ and $E[P]$; $\beta$ for the decay rate of $V_l$, the variance of $Y_l$; and $\gamma$ for the growth rate of the computing cost $C_l$ for the estimator $\widehat{Y_l}$ of $Y_l$ at level $l$. These constants are expressed in Theorem 1 of \cite{giles15} as follows:
 	\begin{align*}
 	\mid E[P_l -P] \mid &\leq c_1 2^{-\alpha l} \\
 	V_l &\leq c_2 2^{-\beta l} \\
-	C_l &\leq c_3 2^{\gamma l}
+	C_l &\leq c_3 2^{\gamma l} \\
+    \alpha &\geq \frac{1}{2} min(\beta, \gamma)
 	\end{align*}
 	
 	The algorithm assumes existence and apriori knowledge of $\alpha, \beta, \gamma$. For each specific application (with different drift, diffusion, and payoff functions), the user can derive in advance the values of these constants using analysis theories. If these constants are not provided by the user, the algorithm attempts to estimate their values via OLS regressions. At each new level, with new estimated values for $E[P_l], V_l, C_l$, the regressions are run to update the estimated $\alpha, \beta, \gamma$. The first algorithm that we implemented from \cite{giles15} is as follows:
+    
 	\begin{lstlisting}
 	target_std_error, confidence_level = get_user_input()
+    epsilon = target_std_error * z_score(confidence_level)
 	initial_N = 10000
+    if alpha, beta, gamma are not provided by user:
+        alpha, beta, gamma = 0, 0, 0
 	
-    if (num_steps is not provided):
-        num_steps_per_path = T / epsilon
-    stat_tracker = new empty statistics tracker of simulated payoffs
-    stat_tracker.set(appropriate discount factor)
-    while (std error given by stat_tracker > target_std_error):
-        path = new simulated path
-        payoff = calculate payoff(path)
-        stat_tracker.add(payoff)
-        update stat_tracker.mean, stat_tracker.stdev
-    std_MC_estimator = stat_tracker.mean
-    std_MC_sample_error = stat_tracker.stdev
-    return std_MC_estimator, std_MC_sample_error
-    \end{lstlisting}
+    # run at least L=0,1,2 levels 
+    L = 2
+    for each level inside [0,L]:
+        generate initial_N paths
+        on each path:
+            walk the fine level to get one sample of payoff P(l)
+            recombine steps from the fine level for the coarse level
+            walk the coarse level to get one sample of payoff P(l-1)
+        estimate m(level) = average of [P(l) - P(l-1)]
+        estimate V(level) = variance of [P(l) - P(l-1)]
+        estimate C(level) = computing cost in estimating E[P(l) - P(l-1)]
+        expected_m_level = 2^(-alpha) * m(level-1)
+        expected_v_level = 2^(-beta) * V(level-1)
+        adjust m(level), V(level) so they are not lower than 0.5 * expected values
+    
+    if alpha, beta, gamma are not provided by user:
+        estimate alpha by OLS with m(level)
+        estimate beta by OLS with V(level)
+        estimate gamma by OLS with C(level)
+    
+    for each level inside [0,L]:
+        recalculate optimal_num_paths(l) per equation (3.1) Giles (2015)
+    
+    if optimal_num_paths > current N(l):
+        simulate more paths to update m(level), V(level), C(level)
+    
+    test for weak convergence using m(level) and alpha
+    if not converged, L += 1 and repeat    
+    \end{lstlisting}   
+        
+    A key point is that along one path, the same pseudo-random numbers are used to estimate $P_l$ and $P_{l-1}$. For example, if $M$ is the factor to refine a path at level $l$ to a coarser level $l-1$, then the step size along one path on level $l$ is $h_l  = M^{-l} \times T$, and we reconstitute $M$ adjacent steps at level $l$ to form one step at $l-1$.
+    
+    Along one path, we want to sample one value of $\widehat{P_l} - \widehat{P_{l-1}}$, and we repeatedly sample $N_l$ paths to estimate $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$. 
     
 	[insert algorithm 2015]
 	[not guarantee for Heston; we show results later]
