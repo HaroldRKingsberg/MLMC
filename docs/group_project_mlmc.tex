@@ -154,7 +154,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	
 	Given that $E[\widehat{P_L}]$ is an approximation of $E[P]$ (though with a bias), MLMC uses $\widehat{Y}$ as an estimator for $E[P]$. Our task is to estimate the variance of this estimator $V[\widehat{Y}]$, as well as the highest level $L$ and the optimal $N_l$ to use at each level in order to meet a targeted accuracy $\epsilon$.
 	
-	We implemented two MLMC algorithms for this purpose. The first algorithm is detailed in \cite{giles15} and makes use of the following positive constants: $\alpha$ for the decay rate of the bias between $E[P_l]$ and $E[P]$; $\beta$ for the decay rate of $V_l$, the variance of $Y_l$; and $\gamma$ for the growth rate of the computing cost $C_l$ for the estimator $\widehat{Y_l}$ of $Y_l$ at level $l$. These constants are expressed in Theorem 1 of \cite{giles15} as follows:
+	We implemented two MLMC algorithms for this purpose. The first algorithm is detailed in \cite{giles15} and makes use of the following positive constants: $\alpha$ for the decay rate of the bias between $E[P_l]$ and $E[P]$; $\beta$ for the decay rate of $V_l$, the variance of the estimator $Y_l$; and $\gamma$ for the growth rate of the computing cost $C_l$ for the estimator $\widehat{Y_l}$ of $Y_l$ at level $l$. These constants are expressed in Theorem 1 of \cite{giles15} as follows:
 	\begin{align*}
 	\mid E[P_l -P] \mid &\leq c_1 2^{-\alpha l} \\
 	V_l &\leq c_2 2^{-\beta l} \\
@@ -201,12 +201,11 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     if not converged, L += 1 and repeat    
     \end{lstlisting}   
         
-    A key point is that along one path, the same pseudo-random numbers are used to estimate $P_l$ and $P_{l-1}$. For example, if $M$ is the factor to refine a path at level $l$ to a coarser level $l-1$, then the step size along one path on level $l$ is $h_l  = M^{-l} \times T$, and we reconstitute $M$ adjacent steps at level $l$ to form one step at $l-1$.
-    
-    Along one path, we want to sample one value of $\widehat{P_l} - \widehat{P_{l-1}}$, and we repeatedly sample $N_l$ paths to estimate $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$. 
+    A key point is that along one path, the same pseudo-random numbers are used to estimate $P_l$ and $P_{l-1}$. For example, if $M$ is the factor to refine a path at level $l$ to a coarser level $l-1$, then the step size along one path on level $l$ is $h_l  = M^{-l} \times T$, and we reconstitute $M$ adjacent steps at level $l$ to form one step at $l-1$. Along one path, we want to sample one value of $\widehat{P_l} - \widehat{P_{l-1}}$, and we repeatedly sample $N_l$ paths to estimate $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$, as well as $V_l = var[\widehat{P_l} - \widehat{P_{l-1}}]$.
     
 	[insert algorithm 2015]
-	[not guarantee for Heston; we show results later]
+    
+	[alpha beta not guarantee for Heston; we show results later]
 		
 	
 	
