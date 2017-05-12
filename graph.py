@@ -4,7 +4,9 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
+from scipy import stats
+from decimal import Decimal
+import matplotlib
 
 def create_graph(asset, filename):
 
@@ -87,8 +89,48 @@ def create_graph(asset, filename):
     plot_vars_and_means(asset, ax1, ax2)
     plot_Npaths_for_epsilon(asset, ax3)
     plt.tight_layout()
-    plt.savefig(filename)
+    if filename:
+        plt.savefig(filename)
     #plt.show()
+
+def create_hist(opt, n_trials=500, n_bins=20, interval=.005):
+
+    exact_solver = option.AnalyticEuropeanStockOptionSolver()
+    exact_sol = exact_solver.solve_option_price(opt)
+
+    lower_bound = exact_sol - interval
+    upper_bound = exact_sol + interval
+
+    solver = option.SimpleLayeredMCOptionSolver(
+        max_interval_length=interval,
+        base_steps=1000
+        )
+
+    approx_sols = np.zeros((n_trials,1))
+    in_bound_count = 0
+    for i in range(n_trials):
+        approx_sol = solver.solve_option_price(opt, False)
+        if lower_bound <= approx_sol <= upper_bound:
+            in_bound_count +=1
+        approx_sols[i] = approx_sol
+
+
+    mean, sigma = np.mean(approx_sols), np.std(approx_sols)
+    conf_int = stats.norm.interval(.95, loc=mean, scale=sigma)
+    fig, ax = plt.subplots()
+    ax.hist(approx_sols, bins=50)
+    ax.axvline(x=conf_int[0],color='r',ls='--',label='95% CI')
+    ax.axvline(x=conf_int[1],color='r',ls='--')
+    ax.axvline(x=lower_bound,color='g',ls='--',label='epsilon +/-%f' %interval)
+    ax.axvline(x=upper_bound,color='g',ls='--')
+    ax.set_xlabel("Option Price")
+    ax.set_ylabel("Count")
+    plt.legend(loc='upper right', bbox_to_anchor=(1.02, 1), borderaxespad=0)
+
+    plt.title("%i trials; Sample Empirical Var.%.2E\nNo. Samples in epsilon interval %i" %(n_trials, Decimal(np.var(approx_sols)), in_bound_count))
+
+    plt.show()
+
 
 def main():
     #params for constant vol stock 1
@@ -131,14 +173,19 @@ def main():
     o3 = option.EuropeanSwaption([hvs_1, hvs_2], risk_free, expiry, True)
 
     ROOT_DIR = os.getcwd()
-    filename = ROOT_DIR+"/figs/constant_vol_call.png"
-    create_graph(o1, filename)
+    filename = None
+    #filename = ROOT_DIR+"/figs/constant_vol_call.png"
+    # create_graph(o1, filename)
 
-    filename = ROOT_DIR+"/figs/constant_vol_exchange.png"
-    create_graph(o2, filename)
+    #filename = ROOT_DIR+"/figs/constant_vol_exchange.png"
+    # create_graph(o2, filename)
 
-    filename = ROOT_DIR+"/figs/heston_vol_exchange.png"
-    create_graph(o3, filename)
+    #filename = ROOT_DIR+"/figs/heston_vol_exchange.png"
+    # create_graph(o3, filename)
+
+    create_hist(o1, n_trials=1000)
+
+
 
 if __name__ == '__main__':
     main()
