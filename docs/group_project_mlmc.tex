@@ -173,35 +173,64 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	
     # run at least L=0,1,2 levels 
     L = 2
-    for each level inside [0,L]:
+    for each l inside [0,L]:
         generate initial_N paths
         on each path:
             walk the fine level to get one sample of payoff P(l)
             recombine steps from the fine level for the coarse level
             walk the coarse level to get one sample of payoff P(l-1)
-        estimate m(level) = average of [P(l) - P(l-1)]
-        estimate V(level) = variance of [P(l) - P(l-1)]
-        estimate C(level) = computing cost in estimating E[P(l) - P(l-1)]
-        expected_m_level = 2^(-alpha) * m(level-1)
-        expected_v_level = 2^(-beta) * V(level-1)
-        adjust m(level), V(level) so they are not lower than 0.5 * expected values
+        estimate m(l) = average of [P(l) - P(l-1)]
+        estimate V(l) = variance of [P(l) - P(l-1)]
+        estimate C(l) = computing cost in estimating E[P(l) - P(l-1)]
+        expected_m_level = 2^(-alpha) * m(l-1)
+        expected_v_level = 2^(-beta) * V(l-1)
+        adjust m(l), V(l) so they are not lower than 0.5 * expected values
     
     if alpha, beta, gamma are not provided by user:
-        estimate alpha by OLS with m(level)
-        estimate beta by OLS with V(level)
-        estimate gamma by OLS with C(level)
+        estimate alpha by OLS with m(l)
+        estimate beta by OLS with V(l)
+        estimate gamma by OLS with C(l)
     
     for each level inside [0,L]:
-        recalculate optimal_num_paths(l) per equation (3.1) Giles (2015)
-    
-    if optimal_num_paths > current N(l):
-        simulate more paths to update m(level), V(level), C(level)
+        recalculate optimal_num_paths(l) per equation (3.1) Giles (2015)    
+        if optimal_num_paths > current N(l):
+            simulate more paths to update m(level), V(level), C(level)
     
     test for weak convergence using m(level) and alpha
     if not converged, L += 1 and repeat    
     \end{lstlisting}   
         
-    A key point is that along one path, the same pseudo-random numbers are used to estimate $P_l$ and $P_{l-1}$. For example, if $M$ is the factor to refine a path at level $l$ to a coarser level $l-1$, then the step size along one path on level $l$ is $h_l  = M^{-l} \times T$, and we reconstitute $M$ adjacent steps at level $l$ to form one step at $l-1$. Along one path, we want to sample one value of $\widehat{P_l} - \widehat{P_{l-1}}$, and we repeatedly sample $N_l$ paths to estimate $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$, as well as $V_l = var[\widehat{P_l} - \widehat{P_{l-1}}]$.
+    A key point is that along one path, the same pseudo-random numbers are used to estimate $P_l$ and $P_{l-1}$. For example, if $M$ is the factor to refine a path at level $l$ to a coarser level $l-1$, then the step size along one path on level $l$ is $h_l  = M^{-l} \times T$, and we reconstitute $M$ adjacent steps at level $l$ to form one step at $l-1$. Along one path, we want to sample one value of $\widehat{P_l} - \widehat{P_{l-1}}$, and we repeatedly sample $N_l$ paths to estimate $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$, and $V_l = var(Y_l)$.
+    
+    The second algorithm we implemented is from section 5 of \cite{giles08} and does not require estimating $\alpha, \beta, \gamma$. Instead, the test for convergence in this algorithm is based on:
+    $$\mid \widehat{Y}_L - M^{-1} \widehat{Y}_{L-1} \mid \leq \frac{1}{\sqrt{2}} (M^2 - 1) \epsilon$$
+    
+    The algorithm repeats increasing the highest level $L$ and re-estimating the optimal $N_l$ at all levels, coupled with running additional paths at each level if the updated $N_l$ is higher than what it had been previously. The process runs until the convergence condition is met.
+    
+    \begin{lstlisting}
+	target_std_error, confidence_level = get_user_input()
+    epsilon = target_std_error * z_score(confidence_level)
+	initial_N = 10000
+    
+    L = 2
+    for each l inside [0,L]:
+        generate initial_N paths
+        on each path:
+            walk the fine level to get one sample of payoff P(l)
+            recombine steps from the fine level for the coarse level
+            walk the coarse level to get one sample of payoff P(l-1)
+        estimate m(l) = average of [P(l) - P(l-1)]
+        estimate V(l) = variance of [P(l) - P(l-1)]       
+        
+    for each level inside [0,L]:
+        recalculate optimal_num_paths(l) per equation (12) Giles (2008)    
+        if optimal_num_paths > current N(l):
+            simulate more paths to update m(level), V(level), C(level)
+    
+    test for convergence
+    
+    if not converged, L += 1 and repeat    
+    \end{lstlisting}
     
 	[insert algorithm 2015]
     
