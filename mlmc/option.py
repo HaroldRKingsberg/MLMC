@@ -455,6 +455,13 @@ class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
 
 class HeuristicLayeredMCOptionSolver(LayeredMCOptionSolver):
 
+    '''
+    The MLMC strategy should use a system for determining
+    whether or not to continue based on the empirically-determined
+    decay factors of the size of the layer means, layer variances and
+    layer costs.
+    '''
+
     def __init__(self,
                  target_mse,
                  rng_creator=None,
@@ -464,6 +471,16 @@ class HeuristicLayeredMCOptionSolver(LayeredMCOptionSolver):
                  alpha=None,
                  beta=None,
                  gamma=None):
+        '''
+        target_mse: float. Target mean standard error
+        rng_cretor: no-arg function returning SampleCreator
+        initial_n_levels: int. Number of levels to run initially. Must be >2
+        level_scaling_factor: int. Ratio of steps in level l+1 to steps in level l
+        initial_n_paths: int. Number of paths to run initially on the base level
+        alpha: float. decay factor of the means of the level
+        beta: float. decay factor of the variances of the level
+        gamma: float. growth factor of the cost of the level
+        '''
         self.target_mse = target_mse
         self.rng_creator = rng_creator
         self.initial_n_levels = max(initial_n_levels, 3)
