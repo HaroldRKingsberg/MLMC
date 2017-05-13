@@ -105,6 +105,10 @@ class AnalyticEuropeanStockOptionSolver(OptionSolver):
     ''' A Black-Scholes stock option pricer. Only works for European stock options '''
 
     def solve_option_price(self, option):
+        '''
+        Actually solve the option price.
+        option: an Option object. May need to be a specific type of option
+        '''
         underlying = option.assets[0]
         spot = underlying.spot
         vol = underlying.vol
@@ -202,11 +206,26 @@ class StatTracker(object):
 
 class NaiveMCOptionSolver(OptionSolver):
 
+    '''
+    Solve an option price using a simple Monte Carlo strategy
+    of continued Euler-Maruyama paths until the resultant
+    mean has an associated confidence interval shorter
+    than the max_interval_length
+    '''
+
     def __init__(self,
                  max_interval_length,
                  confidence_level=0.95,
                  rng_creator=None,
                  n_steps=None):
+        '''
+        max_interval_length: float. The longest the confidence interval may be
+        confidence_level: float. The % chance the population mean falls within
+                          the calculated confidence interval
+        rng_creator: fn. No-arg function that returns a SampleCreator object
+        n_steps: int. Number of steps per Euler-Maruyama path. Defaults to
+                 option expiry normalized by the max_interval_length
+        '''
         self.max_interval_length = max_interval_length
         self.confidence_level = confidence_level
         self.rng_creator = rng_creator
@@ -214,6 +233,7 @@ class NaiveMCOptionSolver(OptionSolver):
 
     @property
     def confidence_level(self):
+        ''' The confidence level of the solver '''
         return self._confidence_level
 
     @confidence_level.setter
@@ -223,6 +243,7 @@ class NaiveMCOptionSolver(OptionSolver):
 
     @property
     def z_score(self):
+        ''' The z score associated with the confidence level '''
         return self._z_score
 
     def _simulate_paths(self, option, n_steps, discount):
@@ -240,6 +261,11 @@ class NaiveMCOptionSolver(OptionSolver):
         return stat_tracker
 
     def solve_option_price(self, option, return_stats=False):
+        '''
+        Actually solve the option price.
+        option: an Option object. May need to be a specific type of option
+        return_stats: boolean. Return not only the option price, but also associate statistics
+        '''
         expiry = option.expiry
         risk_free = option.risk_free
         discount = math.exp(-risk_free * expiry)
