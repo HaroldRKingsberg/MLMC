@@ -15,7 +15,15 @@ class Option(object):
 
     __metaclass__ = abc.ABCMeta
 
+    ''' A general representation of an option. '''
+
     def __init__(self, assets, risk_free, expiry, is_call):
+        '''
+        assets: list of underlying assets. Will probably be stocks in this framework.
+        risk_free: the risk-free interest rate
+        expiry: days until expiration of the option
+        is_call: boolean. Whether the option is a call option or a put option
+        '''
         self.assets = assets
         self.risk_free = risk_free
         self.expiry = expiry
@@ -28,7 +36,16 @@ class Option(object):
 
 class EuropeanStockOption(Option):
 
+    ''' A stock option with a European payout '''
+
     def __init__(self, assets, risk_free, expiry, is_call, strike):
+        '''
+        assets: list of underlying assets. Will probably be stocks in this framework.
+        risk_free: the risk-free interest rate
+        expiry: days until expiration of the option
+        is_call: boolean. Whether the option is a call option or a put option
+        strike: the strike price of the option
+        '''
         if isinstance(assets, collections.Iterable):
             assets = assets[:1]
             if not isinstance(assets[0], stock.Stock):
@@ -47,7 +64,17 @@ class EuropeanStockOption(Option):
 
 
 class EuropeanSwaption(Option):
+
+    ''' An exchange option with a European payout.'''
+
     def __init__(self, assets, risk_free, expiry, is_call):
+        '''
+        assets: list of underlying assets. Will probably be stocks in this framework.
+        risk_free: the risk-free interest rate
+        expiry: days until expiration of the option
+        is_call: boolean. Whether the option is a call option or a put option
+        '''
+
         if len(assets) != 2:
             raise ValueError('Requires two underlying assets')
 
@@ -60,14 +87,22 @@ class EuropeanSwaption(Option):
 
 class OptionSolver(object):
 
+   ''' Given an option, will solve for the 'correct' price of the option '''
+
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def solve_option_price(self, option, return_stats=False):
-        return None
+        '''
+        Actually solve the option price.
+        option: an Option object. May need to be a specific type of option
+        return_stats: boolean. Return not only the option price, but also associate statistics
+        '''
 
 
 class AnalyticEuropeanStockOptionSolver(OptionSolver):
+
+    ''' A Black-Scholes stock option pricer. Only works for European stock options '''
 
     def solve_option_price(self, option):
         underlying = option.assets[0]
@@ -96,7 +131,12 @@ class AnalyticEuropeanStockOptionSolver(OptionSolver):
 
 class StatTracker(object):
 
+    ''' Keeps track of running means and variances '''
+
     def __init__(self, discount):
+        '''
+        discount: the discount value that we will use to weigh all stats.
+        '''
         self.discount = discount
         self.count = 0
         self.total = 0
@@ -105,6 +145,9 @@ class StatTracker(object):
 
     @property
     def variance(self):
+        '''
+        The running variance of the samples so far added
+        '''
         if self.count in (0, 1):
             return float('inf')
 
@@ -114,6 +157,9 @@ class StatTracker(object):
 
     @property
     def stdev(self):
+        '''
+        The running standard deviation of the samples so far added
+        '''
         if self.count in (0, 1):
             return float('inf')
 
@@ -121,12 +167,19 @@ class StatTracker(object):
 
     @property
     def mean(self):
+        '''
+        The running arithmetic mean of the samples so far added
+        '''
         if self.count == 0:
             return float('nan')
 
         return self.discount * (self.total + self.initial_val*self.count) / self.count
 
     def add_sample(self, s):
+        '''
+        Add a sample to our set of samples for use in the
+        running statistics
+        '''
         if self.initial_val is None:
             self.initial_val = s
 
@@ -136,12 +189,15 @@ class StatTracker(object):
         self.sum_of_squares += diff**2
 
     def get_interval_length(self, z_score):
+        '''
+        Determine the size of the confidence interval given a specific z-score
+        z_score: float. The number of standard deviations away from the sample mean
+                 we expect the population mean to fall into. 1.96 for 95% confidence.
+        '''
         if self.count == 0:
             return float('inf')
 
         return self.stdev * self.count**(-0.5) * z_score
-
-
 
 
 class NaiveMCOptionSolver(OptionSolver):
