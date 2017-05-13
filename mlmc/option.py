@@ -282,11 +282,29 @@ class NaiveMCOptionSolver(OptionSolver):
 
 class LayeredMCOptionSolver(OptionSolver):
 
+    ''' 
+    Solve option price using a multi-level Monte Carlo (MLMC)
+    strategy. There are multiple ways of doing this
+    '''
+
     @abc.abstractmethod
     def run_levels(self, option, discount):
-        return
+        '''
+        Run the multiple levels of E-M paths
+
+        option: Option. What we're looking to price
+        discount: float. Discount factor of money in the future.
+        '''
 
     def run_bottom_level(self, option, steps):
+        '''
+        Run the bottom level of E-M paths. Each of the E-M paths
+        will have only one step
+
+        option: Option. What we're looking to price
+        steps: int. Totally irrelevant, used only because run_upper_levels
+               requires it as part of the signature.
+        '''
         result = path.create_simple_path(option.assets,
                                          option.risk_free,
                                          option.expiry,
@@ -295,6 +313,13 @@ class LayeredMCOptionSolver(OptionSolver):
         return option.determine_payoff(*result),
 
     def run_upper_level(self, option, steps):
+        '''
+        Run a non-bottom level of E-M paths. This comes out to
+        running two paths, one with K times as many steps as the other
+
+        option: Option. What we're looking to price
+        steps: int. the number of steps for the path with fewer steps.
+        '''
         result = path.create_layer_path(option.assets,
                                         option.risk_free,
                                         option.expiry,
@@ -308,6 +333,15 @@ class LayeredMCOptionSolver(OptionSolver):
         return (payoff_fine - payoff_coarse),
 
     def run_level(self, option, L, n, *trackers):
+        '''
+        Run an individual level
+
+        option: Option. What we're looking to price.
+        L: int. The level we wish to run.
+        n: int. The number of times we wish to run the level.
+        *trackers: iterable of StatTrackers. Will be used to keep track of 
+                   price, and possibly also time to run path.
+        '''
         if L == 0:
             fn = self.run_bottom_level
             steps = 1
@@ -319,6 +353,11 @@ class LayeredMCOptionSolver(OptionSolver):
                 t.add_sample(s)
 
     def solve_option_price(self, option, return_stats=False):
+        '''
+        Actually solve the option price.
+        option: an Option object. May need to be a specific type of option
+        return_stats: boolean. Return not only the option price, but also associate statistics
+        '''
         expiry = option.expiry
         risk_free = option.risk_free
         discount = math.exp(-risk_free * expiry)
@@ -337,12 +376,27 @@ class LayeredMCOptionSolver(OptionSolver):
 
 class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
 
+    '''
+    The MLMC strategy should use a simple system for determining
+    whether or not to continue, based on the empirical size of the
+    highest level in comparison to the second-highest level. The number
+    of paths run should simply be initially assumed as the same for all
+    levels
+    '''
+
     def __init__(self,
                  max_interval_length,
                  level_scaling_factor=4,
                  base_steps=1000,
                  rng_creator=None,
                  min_L=3):
+        '''
+        max_interval_length: float. Size of the error of the price
+        level_scaling_factor: int. Ratio of steps in level l+1 to steps in level l
+        base_steps: int. Number of paths to initially run per level
+        rng_creator: no-arg function returning SampleCreator
+        min_L: int. Starting number of levels to run
+        '''
         self.max_interval_length = max_interval_length
         self.level_scaling_factor = max(level_scaling_factor, 2)
         self.base_steps = base_steps
@@ -367,7 +421,6 @@ class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
     def _is_error_too_high(self, trackers):
         t1, t2 = trackers[-2:]
 
-        # empirical = abs(t2.mean - t1.mean/self.level_scaling_factor)
         empirical = max(abs(t1.mean) / self.level_scaling_factor, abs(t2.mean))
         estimated = ((self.level_scaling_factor - 1) * self.max_interval_length / (2**0.5))
         return estimated < empirical
@@ -381,7 +434,6 @@ class SimpleLayeredMCOptionSolver(LayeredMCOptionSolver):
         while sum(n for n, _ in trackers) > 0:
             for L, (n, t) in enumerate(trackers):
                 self.run_level(option, L, n, t)
-
 
             addl_steps = self._determine_additional_steps(
                 option,
