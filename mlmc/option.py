@@ -87,7 +87,7 @@ class EuropeanSwaption(Option):
 
 class OptionSolver(object):
 
-   ''' Given an option, will solve for the 'correct' price of the option '''
+    ''' Given an option, will solve for the 'correct' price of the option '''
 
     __metaclass__ = abc.ABCMeta
 
