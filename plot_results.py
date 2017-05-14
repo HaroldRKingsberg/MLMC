@@ -117,8 +117,8 @@ def main():
     
     simple_layer_solver = option.SimpleLayeredMCOptionSolver(epsilon)
     plot_log_var_mean(heston_swaption, simple_layer_solver, ax1, ax2)
-    
-    epsilon_list = [0.01, 0.05, 0.1, 0.25, 0.5]
+        
+    epsilon_list = [0.75, 0.5, 0.25, 0.1]
     plot_numpaths(heston_swaption, ax3, ax4, epsilon_list, 'simple')
     
     plt.tight_layout()
