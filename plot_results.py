@@ -10,6 +10,7 @@ def plot_log_var_mean(one_option, layer_solver, ax1, ax2):
     '''
     # M is the factor to refine one level to the next
     M = int(layer_solver.level_scaling_factor)
+    print("...start pricing option using mlmc...")
     (option_price, means, variances, counts) = layer_solver.solve_option_price(one_option, True)
     L = len(variances)
     
@@ -88,41 +89,83 @@ def plot_numpaths(one_option, ax3, ax4, epsilon_list, str_solver_type):
         
 def main():
     spot_1 = 100
-    vol_1 = 0.2
-    kappa_1 = 0.15
-    theta_1 = 0.25    
-    gamma_1 = 0.1
+    vol_1 = 0.2 / (252**0.5)
+    kappa_1 = 0.15 / (252**0.5)
+    theta_1 = 0.25 / (252**0.5)
+    gamma_1 = 0.1 / (252**0.5)
     
     spot_2 = 50
-    vol_2 = 0.4
-    kappa_2 = 0.35
-    theta_2 = 0.5
-    gamma_2 = 0.2
+    vol_2 = 0.4 / (252**0.5)
+    kappa_2 = 0.35 / (252**0.5)
+    theta_2 = 0.5 / (252**0.5)
+    gamma_2 = 0.2 / (252**0.5)
     
-    risk_free = 0.05
-    expiry = 1.5
+    risk_free = 0.05 / 252
+    expiry = 100
     is_call = True
     
     hvs_1 = stock.VariableVolatilityStock(spot_1, vol_1, kappa_1, theta_1, theta_1)
     hvs_2 = stock.VariableVolatilityStock(spot_2, vol_2, kappa_2, theta_2, theta_2)
     
-    heston_swaption = option.EuropeanSwaption([hvs_1, hvs_2], risk_free, expiry, is_call)    
+    cvs_1 = stock.ConstantVolatilityStock(spot_1, vol_1)
+    cvs_2 = stock.ConstantVolatilityStock(spot_2, vol_2)
     
-    ROOT_DIR = os.getcwd()
-    epsilon = 0.5
+    heston_swaption = option.EuropeanSwaption([hvs_1, hvs_2], risk_free, expiry, is_call)
+    constvol_vanilla = option.EuropeanStockOption(cvs_1, risk_free, expiry, is_call, spot_1)
+    heston_vanilla = option.EuropeanStockOption(hvs_1, risk_free, expiry, is_call, spot_1)
+    
+    ROOT_DIR = os.getcwd()    
     
     # Case 1: simple layer solver, heston vol, swaption
-    filename = ROOT_DIR + '/figs/simple_layer_heston_swap'    
+    # filename = ROOT_DIR + '/figs/simple_layer_heston_swap'
+    # fig, ((ax1,ax2), (ax3,ax4)) = plt.subplots(2,2)
+    
+    # epsilon = 2.0
+    # simple_layer_solver = option.SimpleLayeredMCOptionSolver(epsilon)
+    # plot_log_var_mean(heston_swaption, simple_layer_solver, ax1, ax2)
+        
+    # epsilon_list = [5.0, 4.0, 3.0, 2.0, 1.0]
+    # plot_numpaths(heston_swaption, ax3, ax4, epsilon_list, 'simple')
+    
+    # plt.tight_layout()
+    # plt.savefig(filename)
+    
+    # Case 2: heuristic layer solver, heston vol, swaption
+    # filename = ROOT_DIR + '/figs/heuristic_layer_heston_swap'
+    # fig, ((ax1,ax2), (ax3,ax4)) = plt.subplots(2,2)
+    
+    # epsilon = 1.0
+    # heuristic_layer_solver = option.HeuristicLayeredMCOptionSolver(epsilon)
+    # plot_log_var_mean(heston_swaption, heuristic_layer_solver, ax1, ax2)
+    
+    # epsilon_list = [4.0, 3.0, 2.0, 1.0, 0.5]
+    # plot_numpaths(heston_swaption, ax3, ax4, epsilon_list, 'heuristic')
+    
+    # Case 3: simple layer solver, constant vol, vanilla call
+    # filename = ROOT_DIR + '/figs/simple_layer_constvol_vanillacall'
+    # fig, ((ax1,ax2), (ax3,ax4)) = plt.subplots(2,2)
+    
+    # epsilon = 0.1
+    # simple_layer_solver = option.SimpleLayeredMCOptionSolver(epsilon)
+    # plot_log_var_mean(constvol_vanilla, simple_layer_solver, ax1, ax2)
+        
+    # epsilon_list = [0.5, 0.4, 0.3, 0.2, 0.1]
+    # plot_numpaths(constvol_vanilla, ax3, ax4, epsilon_list, 'simple')
+    
+    # Case 4: simple layer solver, heston vol, vanilla call
+    filename = ROOT_DIR + '/figs/simple_layer_heston_vanillacall'
     fig, ((ax1,ax2), (ax3,ax4)) = plt.subplots(2,2)
     
+    epsilon = 0.5
     simple_layer_solver = option.SimpleLayeredMCOptionSolver(epsilon)
-    plot_log_var_mean(heston_swaption, simple_layer_solver, ax1, ax2)
+    plot_log_var_mean(heston_vanilla, simple_layer_solver, ax1, ax2)
         
-    epsilon_list = [0.75, 0.5, 0.25, 0.1]
-    plot_numpaths(heston_swaption, ax3, ax4, epsilon_list, 'simple')
+    epsilon_list = [2.5, 2.0, 1.5, 1.0, 0.5]
+    plot_numpaths(heston_vanilla, ax3, ax4, epsilon_list, 'simple')
     
     plt.tight_layout()
     plt.savefig(filename)
+    
     plt.show()
     
 if __name__ == '__main__':
