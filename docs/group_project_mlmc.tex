@@ -37,14 +37,12 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 
 \newpage
 \section{Introduction} 
-	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo (MC) method which has computing cost of $O(\epsilon^{-3})$. For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods.
+	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo (MC) method which has computing cost of $O(\epsilon^{-3})$. 
+    
+    For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods.
 	
 	[xxx insert empirical results of the order of convergence]
 	[TBD...summary about our results and cost savings]
-	
-	Section 2 below describes the specifications of a European stock exchange option, as well as the Heston model for the evolutions of a stock's price and its stochastic volatility. Section 3 outlines the Euler-Maruyama method in discretizing the paths of a stock's price and volatility, followed by section 4 on the standard Monte Carlo method to simulate these paths. Section 5 then describes the MLMC algorithm 
-	
-	[xxxTBD...]
 
 \section{Heston Model and the European Exchange Option}
 	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option $P$ at time T is: $P(T)=max[0, S_1(T)-S_2(T)]$. The aim of our project is to employ Monte Carlo simulation to estimate the price of this European exchange option at time $t_0=0$ under the Heston stochastic volatility model.
@@ -231,15 +229,35 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     
     if not converged, L += 1 and repeat    
     \end{lstlisting}
-    
-	[insert algorithm 2015]
-    
-	[alpha beta not guarantee for Heston; we show results later]
-		
-	
 	
 \section{Empirical Results}
-
+    Our replication confirms the result of \cite{giles08} in the case of constant volatility stock. This demonstrates that MCMC's computing effort scales with $O(\epsilon^{-2})$ when the drift and diffusion functions of the stock satisfy the required conditions. 
+    \begin{figure}
+        \includegraphics[width=\linewidth]{simple_layer_constvol_vanillacall.png}
+        \caption{Scenario: European vanilla call on constant-vol stock}
+        \label{fig:constvol_vanillacall}
+    \end{figure}
+    
+    Figure \ref{fig:constvol_vanillacall} shows the most basic case where we price a vanilla European call option on a constant volatility stock. In the bottom right plot, cost $C$ is defined as the total number of steps taken. For standard MC, cost is $O(\epsilon^{-3})$ and thus for standard MC, $C \times \epsilon^{2}$ is a function of $O(\epsilon^{-1})$, which is the curve that we see. But MLMC in this case scales like $O(\epsilon^{-2})$ and thus for MLMC, $C \times \epsilon^{2}$ is much closer to a constant, which is why we see the straight line. 
+    
+    We now move to price the same vanilla European call but on a stock with Heston volatility. In this scenario, the diffusion of the stock no longer satisfies the required conditions. 
+    \begin{figure}
+        \includegraphics[width=\linewidth]{simple_layer_heston_vanillacall.png}
+        \caption{Scenario: European vanilla call on Heston-vol stock}
+        \label{fig:heston_vanillacall}
+    \end{figure}
+    
+    We see from figure \ref{fig:heston_vanillacall} that our replication here still agrees with the figure from \cite{giles08} and MLMC still takes fewer total steps than standard MC. But in this case $C \times \epsilon^{2}$ is no longer close to a constant but more similar to a function of $\epsilon$. The scaling of MLMC as $\epsilon$ changes remains better than standard MC. 
+    
+    Our third scenario is a European stock exchange option on two stocks that have Heston volatility. 
+    \begin{figure}
+        \includegraphics[width=\linewidth]{simple_layer_heston_swap.png}
+        \caption{Scenario: European exchange option on two Heston-vol stocks}
+        \label{fig:heston_swap}
+    \end{figure}
+    
+    It is interesting to see here that our result changes compared to the previous two cases. MLMC is taking more steps than standard MC, and we cannot confirm that the computing effort of MLMC scales like $O(\epsilon^{-2})$. When the drift and diffusion of the stock no longer satisfy required conditions, the theorem from \cite{giles08} no longer guarantees that the computing effort of MLMC will be $O(\epsilon^{-2})$. In our example here, we cannot state whether MLMC scales in a similar way to standard MC, for the two Heston volatility stocks. This remains an area of further exploration.
+    
 \bibliography{group_project_mlmc_bibi}
 \bibliographystyle{apalike}
 
