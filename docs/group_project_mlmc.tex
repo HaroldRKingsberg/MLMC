@@ -37,23 +37,21 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 
 \newpage
 \section{Introduction} 
-	In this group project, we implement the Multilevel Monte Carlo (MLMC) method in path simulations in order to construct pricing of a European stock exchange option, under the assumptions of stochastic volatility in the Heston model, as outlined by \cite{heston93}. The MLMC method in path simulations was described by \cite{giles08}. The key advantage of this method is that for the same target level of accuracy (expressed in terms of confidence interval width, $\epsilon$), the MLMC method requires computing effort of $O(\epsilon^{-2}(log\epsilon)^2)$, compared to the standard Monte Carlo (MC) method which has computing cost of $O(\epsilon^{-3})$. 
+	In this project, we implement a multi-level Monte Carlo (MLMC) method of path simulation in order to price European stock exchange options. In particular, we assume the stochastic volatility described by the Heston model, as outlined by \cite{heston93}. In particular, we seek to replicate the MLMC scheme described by \cite{giles08}. This is done with an eye to reducing the cost of Monte Carlo simulation, as a standard Monte Carlo (MC) method has computing cost of $O(\epsilon^{-3})$, whereas the MLMC scheme requires computing costs of $O(\epsilon^{-2}(log\epsilon)^2)$ -- asymptotically less effort. 
     
-    For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods.
-	
-	[xxx insert empirical results of the order of convergence]
-	[TBD...summary about our results and cost savings]
+    For the problem of our project, the stochastic volatility function prescribed by the Heston model does not satisfy the global Lipschitz condition, and thus the order of weak and strong convergence cannot be determined \cite{giles08} via theoretical methods. Nevertheless, our empirical results from testing shows the MLMC scheme of option pricing to have significant merit: although standard MC may be faster for larger $\epsilon$, MLMC is, with few exceptions, faster for smaller $\epsilon$. As option-pricing schemata may require $\epsilon$ to fall within small fractions of a penny, the ability of standard MC to be speedier on large $\epsilon$ is therefore nigh entirely irrelevant. This, however, only occurs when the underlying stochastic differential equations obey the global Lipschitz condition, or at least, comes close to doing so. As we depart increasingly far from the global Lipschitz condition, the MLMC model loses efficacy, such that using the Heston model of asset price volatility when pricing European exchange options provides no discernible benefit.
 
 \section{Heston Model and the European Exchange Option}
-	Our project examines a European exchange option, which gives its owner the ability, but not the obligation, to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time T of the option. Thus the payoff of the option $P$ at time T is: $P(T)=max[0, S_1(T)-S_2(T)]$. The aim of our project is to employ Monte Carlo simulation to estimate the price of this European exchange option at time $t_0=0$ under the Heston stochastic volatility model.
-    
-    Before discussing the Heston model, we discuss the standard Black-Scholes assumptions, under which this exchange option can be priced using the Margrabe's formula given by \cite{margrabe78}. The Black-Scholes assumptions are that the stocks $S_1$ and $S_2$ have continuous dividend yield $q_1$ and $q_2$, respectively, and that their prices evolve based on the stochastic differential equation (SDE) with constant volatility as follows:
+	Our project examines European exchange options. These give their holder the right -- not the obligation -- to exchange one unit of stock $S_2$ for one unit of stock $S_1$; this option can be exercised only at the specified expiry time, $T$ of the option. Thus, the payoff of the option $P$ at time $T$ is: $P(T)=max[0, S_1(T)-S_2(T)]$.
+	
+\subsection{Black-Scholes}
+    The industry standard for pricing European options is the Black-Scholes Model. Exchange options can be priced using a modification of the Black-Scholes model, Margrabe's formula, given by \cite{margrabe78}. Black-Scholes makes several assumptions. First, it assumes that the underlying assets of an option are currently fairly priced. This in turn implies that any and all further shocks to the price of the underlying assets (in the case of exchange options, these are the two stocks) are unforeseeable, and that they can be thought of as being normally distributed about zero. Additionally, all underlying assets $S_n$ have associated continuous dividend yields $q_n$ -- for the purposes of this paper, this was assumed to always be equal to zero, although modification to allow a nonzero $q_n$ value would be trivial. Based on these assumptions, the prices of the underlying assets may be modeled as the following stochastic differential equations, where $\sigma_n$ is the volatility of the underlying asset:
 	\begin{align*}
 	dS_1(t) &= \mu_1 S_1(t) dt + \sigma_1 S_1(t) dW_1(t) \\
 	dS_2(t) &= \mu_2 S_2(t) dt + \sigma_2 S_2(t) dW_2(t)
 	\end{align*}	
 	
-	In these equations, the two standard Brownian motions $W_1(t)$ and $W_2(t)$ are assumed to be correlated by a constant correlation coefficient $\rho$, satisfying $dW_1(t) \times dW_2(t) = \rho \times dt$. When the dynamics of the stocks are specified in the risk-neutral measure, the drift term $\mu_i$ is changed into $r-q_i$, where $r$ is the constant risk-free interest rate. Then the Margrabe's formula indicates that the value of the European exchange option at time $t_0=0$ is:
+	In these equations, the two standard Brownian motions $W_1(t)$ and $W_2(t)$ are assumed to be correlated by a constant correlation coefficient $\rho$, satisfying $dW_1(t) \times dW_2(t) = \rho \times dt$. When the dynamics of the stocks are specified in the risk-neutral measure, the drift term $\mu_i$ is changed into $r-q_i$, where $r$ is the constant risk-free interest rate. In such a case, Margrabe's formula indicates the value of the European exchange option at time $t_0=0$ is:
 	\begin{align*}
 	C(0) &= e^{-q_1 T} S_1(0) N(d_1) - e^{-q_2 T} S_2(0) N(d_2) \\
 	d_1 &= \frac{ln(\frac{S_1(0)}{S_2(0)}) + (q_2 - q_1 + \frac{1}{2} \sigma^2) T}{\sigma \sqrt{T}} \\
@@ -61,7 +59,8 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	\sigma &= \sqrt{\sigma_1^2 + \sigma_2^2 - 2 \rho \sigma_1 \sigma_2}
 	\end{align*}	
 	
-	As we move from the Black-Scholes model to the Heston model, the key difference is that the volatility $\sigma$ associated with the diffusion term in the stock's SDE no longer remains a constant. Instead, in the Heston model, the square of the volatility (i.e. the variance) also follows a stochastic process characterized by an SDE. Hence, the dynamics of stock $S_i(t)$ in the Heston model consist of the equations as follows:
+\subsection{Heston Model of Volatility}
+	The standard Black-Scholes model assumes constant volatility. This, however, is not reflective of market forces: assets may experience lengthy periods of low volatility punctuated by short periods of high volatility -- in particular, this is often seen in stock markets where the release of corporate SEC filings often triggers larger stock prices than are normally otherwise seen. The Heston model therefore incorporates the possibility of non-constant volatility. The square of the volatility (i.e. the variance of the underlying asset price) also follows a stochastic process characterized by an SDE. Hence, the dynamics of stock $S_i(t)$ in the Heston model consist of the equations as follows:
 	\begin{align*}
 	dS_i(t) &= \mu_i S_i(t) dt + \sqrt{\upsilon_i(t)} S_i(t) dW_i(t) \\
 	d\upsilon_i(t) &= \kappa_i (\theta_i - \upsilon_i(t)) dt + \gamma \sqrt{\upsilon_i(t)} dZ_i(t) \\
@@ -71,7 +70,8 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     
 	In this model, the variance $\upsilon_i(t)$ of the stock $S_i(t)$ follows a stochastic process with a mean-reverting characteristic. When $\upsilon_i(t)$ is higher than its mean-reverting level $\theta_i$, the drift term in the SDE of $\upsilon_i(t)$ becomes negative. The variance then has an underlying tendency to drift back to $\theta_i$. The opposite happens when the variance $\upsilon_i(t)$ is lower than its mean-reverting level $\theta_i$. Meanwhile, the constant parameter $\kappa_i$ influences the speed with which the variance reverts to $\theta_i$. 
 	
-	When we simulate the evolution of two stocks $S_1$ and $S_2$ in the Heston model, we will need to specify in advance the constant correlation coefficients for the Brownian motions in each of the stock's SDE and its associated variance's SDE. Specifically, we will need to specify the following symmetric positive definite correlation matrix for the four Brownian motions driving the diffusion terms:
+\subsection{Correlated Motion}
+	The models discussed so far are all agnostic on the question of how correlated the Brownian motions are. In the case of markets generally, we do expect some degree of correlation -- at the very least, in the event of a market crash, virtually all asset prices will be correlated, with riskier investments all trending downward, and safer investments (most notably US Treasury securities) trending upward. In the event of exchange options, we find it even more likely the stock prices are correlated, as such an exotic instrument are often used to hedge risk, an objection not generally achieved by random, uncorrelated motions. Thus, for the purpose of this project, simulation of the evolution of the prices of the two underlying stocks $S_1$ and $S_2$ requires advance specification of the constant correlation coefficients for the four Brownian motions. Specifically, we will need to specify the following symmetric positive definite correlation matrix for the four Brownian motions driving the diffusion terms:
 	\begin{equation}
 	corr
 	\begin{bmatrix} 
@@ -90,13 +90,14 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	\end{equation}
 	
 \section{Standard Monte Carlo for Euler-Maruyama Path Simulations}
-	At the current time $t_0=0$, we are concerned with the payoff of an option with the expiry time $T$. We are interested in simulating the evolution of the stocks' prices over possible paths between the time $[0,T]$. The Euler-Maruyama method in path discretization starts with dividing this time interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where the notations include: $h = T/K$, $t_0=0$, $t_k=k \times h$. We start with $S_i(t_0)=S(0)$, and in order to simulate the stock price over one step from $S_i(t_k)$ to $S_i(t_{k+1})$ as well as to let its variance evolve under the Heston model, the full truncation method (\cite{andersen07}) indicates that:
+\subsection{Theoretical Underpinnings}
+	Having defined the stochastic equations that, in turn, define our models of stock price motion, we now move on to simulating said motion. In particular, we need to simulate the motion of the stock price from the interval $t = [0, T]$, where $0$ is the current time, and $T$ is the expiry of the option. This can be done using the Euler-Maruyama method of path discretization. This starts by dividing the interval $[0,T]$ into $K$ equispaced nodes of distance $h$ apart, where $h = T/K$, $t_0=0$, $t_k=k \times h$. Starting with $S_i(t_0)=S(0)$, in order to simulate changes in both stock price and variance over the step from $S_i(t_k)$ to $S_i(t_{k+1})$, we use the full truncation method (\cite{andersen07}):
 	\begin{align}	
 	S_i(t_{k+1}) - S_i(t_k) &= \mu_i S_i(t_k) h + \sqrt{\upsilon_i(t_k)^+} S_i(t_k) dW_i \\
 	\upsilon_i(t_{k+1}) - \upsilon_i(t_k) &= \kappa_i (\theta_i - \upsilon_i(t_k)^+) h + \gamma \sqrt{\upsilon_i(t_k)^+} dZ_i(t) \\
 	\upsilon_i(t_k)^+ &= max[\upsilon_i(t_k), 0]
 	\end{align}
-	where the increments of the Brownian motions, $dW_i$ and $dZ_i$, are sampled from correlated normal distributions with mean equal to 0, variance equal to the size of the incremental time step $h$, and correlations as specified in the correlation matrix (equation 1). 
+	where the increments of the Brownian motions, $dW_i$ and $dZ_i$, are sampled from correlated normal distributions $N\left(0, h\right)$, correlations as specified in the correlation matrix described in the last subsection of Section 1 of this paper.. 
 	
 	Under the Black-Scholes model, this path simulation simplifies to:
 	\begin{equation}
@@ -107,9 +108,10 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     \begin{equation}
     \widehat{C(0)} = D \times N^{-1} \times \sum_{i=1}^N P(\widehat{S(T)},T)
     \end{equation}
-	where $D$ represents the discount factor. For example, when the stock dynamics are specified and simulated in the risk-neutral probability measure constant risk-free rate $r$, we have $D=e^{-rT}$.
+	where $D$ represents the discount factor. For example, when the stock dynamics are specified and simulated in the risk-neutral probability measure constant risk-free rate $r$, we have $D=e^{-rT}$. This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method.
     
-    This method of repeatedly sampling $N$ independent paths represents the standard Monte Carlo method. According to \cite{giles08}, provided that the stock's drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$, and the option's payoff function $P=P(S(T))$, satisfy certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method for Euler-Maruyama paths has an expected mean square error (MSE) that is asymptotically $O(N^{-1}) + O(h^2)$. 
+\subsection{Expected Error}
+    According to \cite{giles08}, provided that the stock's drift and diffusion functions $\mu(\cdot)$ and $\sigma(\cdot)$, and the option's payoff function $P=P(S(T))$, satisfy certain conditions (including the global Lipschitz conditions), the estimator from the standard Monte Carlo method for Euler-Maruyama paths has an expected mean square error (MSE) that is asymptotically $O(N^{-1}) + O(h^2)$. 
     
 	We can further examine the error by separating it into a discretization error and a statistical error. Closely following \cite{giles08}, we denote $P=P(S(T))$ as the payoff based on $S(T)$, whose expectation $E[P]$ is the quantity we are interested in estimating. In practice, we cannot simulate $S(T)$ and $P$, but instead rely on simulating small incremental time steps of size $h$ each. Let $\widehat{S(t)}$ be the approximation of $S(t)$ via simulating with time step $h$, and $\widehat{P_h}$ be the associated approximation of $P$, where the subscript $h$ is to emphasize the step size. Provided that conditions on $\mu(\cdot)$ and $\sigma(\cdot)$ are met, the orders of convergence of Euler-Maruyama are expressed as in \cite{higham15}:
 	\begin{align*}
@@ -117,11 +119,12 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
 	E[\sup_{0 \leq t_k \leq T}\mid \widehat{S(t_k)} - S(t_k)\mid ] &= O(h^{\frac{1}{2}})
 	\end{align*}
     
-	When we simulate $N$ independent paths, we are making an estimator of $E[\widehat{P}_h]$ instead of $E[P]$. Our estimator has a bias stemmed from the step size $h$, and the bias is $E[\widehat{P_h}] - E[P] = O(h)$, provided conditions are met (\cite{higham15}). This bias is a discretization error that is generally not influenced by $N$. Our second source of error is statistical and it depends on how many samples $N$ we generate to estimate $E[\widehat{P}_h]$. The statistical error is described by a confidence interval width $O(N^{-\frac{1}{2}})$, or variance $O(N^{-1})$.
+	When we simulate $N$ independent paths, we are making an estimator of $E[\widehat{P}_h]$ instead of $E[P]$. Our estimator has a bias stemmed from the step size $h$, and the bias is $E[\widehat{P_h}] - E[P] = O(h)$, provided conditions are met (\cite{higham15}). This bias is a discretization error generally not influenced by $N$. Our second source of error is statistical, depending on how many samples $N$ we generate to estimate $E[\widehat{P}_h]$. The statistical error is described by a confidence interval width $O(N^{-\frac{1}{2}})$, or variance $O(N^{-1})$.
 	
     We target a certain level of accuracy expressed by $\epsilon$, the width of the confidence interval given by the Monte Carlo estimator. Specifying $\epsilon$ is equivalent to specifying a target standard deviation of the estimator as well as confidence level such as 90\% or 95\%. The MSE will then be $O(\epsilon^2)$. In order to achieve this level of accuracy via standard MC simulations, we will need the number of independent paths $N \sim O(\epsilon^{-2})$ and the step size $h \sim O(\epsilon)$. Given that on each single path the MC algorithm takes $T/h$ number of steps, the total computing effort from standard MC is $O(Nh^{-1})$, or $O(\epsilon^{-3})$. 
     
-    For our group project, we implemented the following standard MC algorithm (for illustration and comparison with MLMC):
+\subsection{Implementation}
+    We implemented the following standard MC algorithm (for illustration and comparison with MLMC):
     \begin{lstlisting}
 	target_std_error, confidence_level = get_user_input()
     if (user_provided_num_steps is None):
@@ -139,18 +142,18 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     \end{lstlisting}
     
     According to \cite{giles08}, the stochastic volatility function $\sigma(\cdot)$ under the Heston model does not satisfy the global Lipschitz condition, and as a result, there is no theoretical guarantee that with simulating the number of independent paths $N \sim O(\epsilon^{-2})$ and step size $h \sim O(\epsilon)$, the MSE will be $O(\epsilon^2)$. In our algorithm above, the number of paths $N$ is increased until the empirical standard error decreases below the targeted standard deviation. 
-    
-    [xxx we will graph to show results of N on yaxis and targeted stdev on xaxis, for Heston vanilla stock, to see if N is O(square)]	
 
 \section{Multilevel Monte Carlo for Path Simulations}
-	Developing on the standard Monte Carlo method above, the MLMC method for path simulations, when applied to Euler-Maruyama discretization, starts by simulating a high number of independent paths, whereby on each path, the step size is large. This represents the initial coarser levels of MLMC. The algorithm then proceeds to finer levels where there are fewer independent paths run on smaller step sizes. The overall MLMC estimator is the sum of the sample average from the coarsest level $l=0$, together with the refinements made from subsequent higher levels.
+	Building on the standard Monte Carlo method described in the previous section, we come to the MLMC method for path simulations. This starts by simulating a high number of independent paths (again, using the Euler-Maruyama method), whereby on each path, the step size is large. This represents the initial coarser levels of MLMC. The algorithm then proceeds to finer levels where there are fewer independent paths run on smaller step sizes. The overall MLMC estimator is the sum of the sample average from the coarsest level $l=0$, together with the refinements made from subsequent higher levels.
 	
-	Following notations from \cite{giles08}, let $\widehat{P_l}$ be the approximation of $P$ using \textit{one single path} only with the step size $h_l$ corresponding to the MLMC level $l$ (for $l=0,1,2,...L$, with $L$ being the finest level). We note that there is a bias as $E[\widehat{P_l}] \neq E[P]$, the difference between these quantities being the discretization error, or the bias from using $E[\widehat{P_l}]$ to approximate $E[P]$. In general, the discretization error of $E[\widehat{P_l}]$ depends most on the step size $h_l$ (instead of on the number of independent paths generated). Provided that  conditions on $\mu(\cdot)$, $\sigma(\cdot)$, and $P(\cdot)$ are met, then $E[\widehat{P_l} - P] = O(h_l)$ as $l\rightarrow \infty$. Our goal is to use $E[\widehat{P_L}]$ as the approximation (though biased) of $E[P]$, and thus we make an estimator of $E[\widehat{P_L}]$.
+\subsection{Theoretical Underpinnings}
+	Following notations from \cite{giles08}, let $\widehat{P_l}$ be the approximation of $P$ using \textit{one single path} only with the step size $h_l$ corresponding to the MLMC level $l$ (for $l=0,1,2,...L$, with $L$ being the finest level). We note there is a bias as $E[\widehat{P_l}] \neq E[P]$, the difference between these quantities being the discretization error, or the bias from using $E[\widehat{P_l}]$ to approximate $E[P]$. In general, the discretization error of $E[\widehat{P_l}]$ depends most on the step size $h_l$ (instead of on the number of independent paths generated). Provided that  conditions on $\mu(\cdot)$, $\sigma(\cdot)$, and $P(\cdot)$ are met, then $E[\widehat{P_l} - P] = O(h_l)$ as $l\rightarrow \infty$. Our goal is to use $E[\widehat{P_L}]$ as the approximation (though biased) of $E[P]$, and thus we make an estimator of $E[\widehat{P_L}]$.
 		
-    The MLMC method does not directly estimate $E[\widehat{P_L}]$ using step size $h_L$ at the finest level. Instead it first writes $E[\widehat{P_L}] = E[\widehat{P_0}] + \sum_{l=1}^L E[\widehat{P_l} - \widehat{P_{l-1}}]$. The method then uses $N_l$ independent paths to make an estimator $\widehat{Y_l}$ for $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$. Also, the quantity $Y_0 = E[\widehat{P_0}]$ is estimated using $N_0$ paths, a fixed input (such as $N_0=10,000$). The overall MLMC estimator for $E[\widehat{P_L}]$ is then:
+    The MLMC method does not directly estimate $E[\widehat{P_L}]$ using step size $h_L$ at the finest level. Instead, it first writes $E[\widehat{P_L}] = E[\widehat{P_0}] + \sum_{l=1}^L E[\widehat{P_l} - \widehat{P_{l-1}}]$. The method then uses $N_l$ independent paths to make an estimator $\widehat{Y_l}$ for $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$. The quantity $Y_0 = E[\widehat{P_0}]$ is estimated using $N_0$ paths, a fixed input (such as $N_0=10,000$). The overall MLMC estimator for $E[\widehat{P_L}]$ is then:
 	$$\widehat{Y} = \sum_{l=0}^L \widehat{Y_l}$$
 	
-	Given that $E[\widehat{P_L}]$ is an approximation of $E[P]$ (though with a bias), MLMC uses $\widehat{Y}$ as an estimator for $E[P]$. Our task is to estimate the variance of this estimator $V[\widehat{Y}]$, as well as the highest level $L$ and the optimal $N_l$ to use at each level in order to meet a targeted accuracy $\epsilon$.
+\subsection{Termination Conditions}
+	Given that $E[\widehat{P_L}]$ is an (admittedly biased) approximation of $E[P]$, MLMC uses $\widehat{Y}$ as an estimator for $E[P]$. Our task is to estimate the variance of this estimator $V[\widehat{Y}]$, as well as the highest level $L$ and the optimal $N_l$ to use at each level in order to meet a targeted accuracy $\epsilon$.
 	
 	We implemented two MLMC algorithms for this purpose. The first algorithm is detailed in \cite{giles15} and makes use of the following positive constants: $\alpha$ for the decay rate of the bias between $E[P_l]$ and $E[P]$; $\beta$ for the decay rate of $V_l$, the variance of the estimator $Y_l$; and $\gamma$ for the growth rate of the computing cost $C_l$ for the estimator $\widehat{Y_l}$ of $Y_l$ at level $l$. These constants are expressed in Theorem 1 of \cite{giles15} as follows:
 	\begin{align*}
@@ -160,7 +163,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     \alpha &\geq \frac{1}{2} min(\beta, \gamma)
 	\end{align*}
 	
-	The algorithm assumes existence and apriori knowledge of $\alpha, \beta, \gamma$. For each specific application (with different drift, diffusion, and payoff functions), the user can derive in advance the values of these constants using analysis theories. If these constants are not provided by the user, the algorithm attempts to estimate their values via OLS regressions. At each new level, with new estimated values for $E[P_l], V_l, C_l$, the regressions are run to update the estimated $\alpha, \beta, \gamma$. The first algorithm that we implemented from \cite{giles15} is as follows:
+	The algorithm assumes existence and a priori knowledge of $\alpha, \beta, \gamma$. For each specific application (with different drift, diffusion, and payoff functions), the user can derive in advance the values of these constants using analysis theories. If these constants are not provided by the user, the algorithm attempts to estimate their values via OLS regressions. At each new level, with new estimated values for $E[P_l], V_l, C_l$, the regressions are run to update the estimated $\alpha, \beta, \gamma$. The first algorithm that we implemented from \cite{giles15} is as follows:
     
 	\begin{lstlisting}
 	target_std_error, confidence_level = get_user_input()
@@ -198,7 +201,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     if not converged, L += 1 and repeat    
     \end{lstlisting}   
         
-    A key point is that along one path, the same pseudo-random numbers are used to estimate $P_l$ and $P_{l-1}$. For example, if $M$ is the factor to refine a path at level $l$ to a coarser level $l-1$, then the step size along one path on level $l$ is $h_l  = M^{-l} \times T$, and we reconstitute $M$ adjacent steps at level $l$ to form one step at $l-1$. Along one path, we want to sample one value of $\widehat{P_l} - \widehat{P_{l-1}}$, and we repeatedly sample $N_l$ paths to estimate $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$, and $V_l = var(Y_l)$.
+    Along one path, the same pseudo-random numbers are used to estimate $P_l$ and $P_{l-1}$. For example, if $M$ is the factor to refine a path at level $l$ to a coarser level $l-1$, then the step size along one path on level $l$ is $h_l  = M^{-l} \times T$, and we reconstitute $M$ adjacent steps at level $l$ to form one step at $l-1$. Along one path, we want to sample one value of $\widehat{P_l} - \widehat{P_{l-1}}$, and we repeatedly sample $N_l$ paths to estimate $Y_l = E[\widehat{P_l} - \widehat{P_{l-1}}]$, and $V_l = var(Y_l)$.
     
     The second algorithm we implemented is from section 5 of \cite{giles08} and does not require estimating $\alpha, \beta, \gamma$. Instead, the test for convergence in this algorithm is based on:
     $$\mid \widehat{Y}_L - M^{-1} \widehat{Y}_{L-1} \mid \leq \frac{1}{\sqrt{2}} (M^2 - 1) \epsilon$$
@@ -231,7 +234,7 @@ Multilevel Monte Carlo Method in Pricing European Stock Exchange Option}
     \end{lstlisting}
 	
 \section{Empirical Results}
-    Our replication confirms the result of \cite{giles08} in the case of constant volatility stock. This demonstrates that MCMC's computing effort scales with $O(\epsilon^{-2})$ when the drift and diffusion functions of the stock satisfy the required conditions. 
+    Our replication confirms the result of \cite{giles08} in the case of constant volatility stock. This demonstrates that MLMC's computing effort scales with $O(\epsilon^{-2})$ when the drift and diffusion functions of the stock satisfy the required conditions. 
     \begin{figure}
         \includegraphics[width=\linewidth]{simple_layer_constvol_vanillacall.png}
         \caption{Scenario: European vanilla call on constant-vol stock}
